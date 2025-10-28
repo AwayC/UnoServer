@@ -2,8 +2,7 @@
 // Created by AWAY on 25-10-19.
 //
 
-#ifndef BACKGROUND_H
-#define BACKGROUND_H
+#pragma once
 
 #include <functional>
 #include <thread>
@@ -73,6 +72,3 @@ namespace uno {
 
 }
 
-
-
-#endif //BACKGROUND_H
