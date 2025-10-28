@@ -18,6 +18,8 @@ add_library(UnoServer
         src/core/errc.cpp
         src/core/server.cpp
         src/core/router.cpp
+        src/core/ThreadQue.cpp
+        src/core/background.cpp
 )
 
 target_link_libraries(UnoServer

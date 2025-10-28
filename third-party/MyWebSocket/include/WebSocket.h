@@ -8,6 +8,7 @@
 #include "../src/core/websocket_parser.h"
 #include "leptjson.h"
 
+#define WSSESSION_ALLOC_SIZE 32
 enum class WsStatus {
     CONNECTING,
     OPEN,
@@ -30,7 +31,9 @@ public:
 
     void send(const lept_value& json);
     void send(const std::string& str);
+    void send(std::string&& str);
     void send(const char* str);
+    void sendFile(const std::string& path);
 
     void connect();
     WsStatus getReadyState() const
@@ -55,19 +58,18 @@ public:
         m_onErrorCb = callback;
     }
 
-    uv_stream_t* getClient()
+    uv_stream_t* getClient() const
     {
         return m_client;
     }
 
-    std::string getStrMessage()
+    std::string_view getStrMessage() const
     {
-        return {m_decodeData.begin(), m_decodeData.end()};
+        return {m_frame.payload.data(), m_frame.payload.size()};
     }
 
     lept_value getJsonMessage();
 
-    void sendPing();
 
 private:
     uv_loop_t* m_loop{};
@@ -79,7 +81,7 @@ private:
     WsStatus readyState;
 
     websocket_parser m_parser;
-    std::vector<uint8_t> m_decodeData;
+    WsFrame m_frame;
 
     struct WriteCtx
     {
@@ -89,17 +91,28 @@ private:
         {
             m_str = str;
         }
+        void setMsg(std::string&& str)
+        {
+            m_str = std::move(str);
+        }
         void setMsg(const char* str)
         {
             m_str = std::string(str);
+        }
+        void setMsg(FileReader* reader)
+        {
+            m_reader = reader;
+            isFile = true;
         }
         void clearMsg()
         {
             m_str.clear();
         }
+        bool isFile;
+        FileReader* m_reader;
         uv_write_t req;
-        uv_buf_t buf[2];
-    } m_write_ctx;
+        std::vector<uv_buf_t> m_buffers;
+    };
 
     //netWorking
     std::function<void(WsSessionPtr)> m_onConnectCb;
@@ -118,8 +131,10 @@ private:
                         const uv_buf_t* buf);
 
     void handleMessage(size_t nread);
+    void handleWsFrame();
 
     void sendPong();
 
-    void inter_send(uint8_t opcode);
+    void inter_send(WriteCtx* ctx, uint8_t opcode);
+    void inter_sendFile(FileReader* reader);
 };

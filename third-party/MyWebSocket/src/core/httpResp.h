@@ -7,7 +7,7 @@
 #include "http_parser.h"
 #include <cstring>
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include "uv.h"
 #include "leptjson.h"
 #include <functional>
@@ -39,7 +39,7 @@ enum class httpStatus
 
 static std::string httpStatus_str(httpStatus status);
 
-using headerMap = std::map<std::string, std::string>;
+using headerMap = std::unordered_map<std::string, std::string>;
 using httpRespPtr = std::shared_ptr<httpResp>;
 
 class httpResp : public std::enable_shared_from_this<httpResp> {
@@ -57,12 +57,11 @@ public:
         return std::make_shared<httpResp>(ctx);
     }
 
-    void init();
-
     /*
      * 用户发送方法
      */
     void sendStr(const std::string& str);
+    void sendStr(std::string&& str);
     void sendJson(const lept_value& json);
     void sendFile(const std::string& path);
 
@@ -72,11 +71,9 @@ public:
     /*
      * 完成回调，发送请求
      */
-    void onCompleteAndSend(const std::function<void(httpResp*)>&& cb);
-    void onCompleteAndSend(const std::function<void(httpResp*)>& cb)
-    {
-        onCompleteAndSend(std::move(cb));
-    }
+    void onSent(const std::function<void(httpResp*)>& cb);
+
+
     void clearContent();
 private:
     /*
@@ -93,12 +90,11 @@ private:
     httpStatus m_status;
     headerMap m_headers;
     std::string m_version;
-    int m_content_length;
     uv_stream_t *m_client;
     std::string m_url;
     std::string m_filePath;
 
-    std::function<void(httpResp*)> m_onComplete;
+    std::function<void(httpResp*)> m_onSent;
     enum class SendType
     {
         NONE = 0,
@@ -108,11 +104,10 @@ private:
     };
 
     SendType m_sendType;
-    FileReader m_reader;
     std::string m_head;
 
     std::vector<uv_buf_t> m_buffers;
-
+    FileReader* m_reader;
     /*
      * 写入完成回调
      */
@@ -123,6 +118,8 @@ private:
      */
     void send();
 
+    void initReader(FileReader* reader);
+    void sendErr();
 
 };
 

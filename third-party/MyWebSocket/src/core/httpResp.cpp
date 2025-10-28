@@ -41,7 +41,7 @@ std::string httpStatus_str(httpStatus status)
 template httpResp::httpResp(std::shared_ptr<HttpServer::Session> ctx);
 
 template<typename T>
-httpResp::httpResp(std::shared_ptr<T> ctx) : m_reader(ctx->getLoop())
+httpResp::httpResp(std::shared_ptr<T> ctx)
 {
     m_status = httpStatus::OK;
     m_sendType = SendType::NONE;
@@ -49,38 +49,24 @@ httpResp::httpResp(std::shared_ptr<T> ctx) : m_reader(ctx->getLoop())
 
 }
 
-void httpResp::init()
+void httpResp::initReader(FileReader* reader)
 {
-    m_reader.onOpen([](FileReader* reader)
-   {
-       if (reader->getResult() < 0)
-       {
-           std::cerr << "send file error" << std::endl;
-       }
-   });
-    m_reader.onRead([](FileReader* reader)
+    auto self = shared_from_this();
+    reader->onError([self](FileReader* reader)
     {
-        if (reader->getResult() < 0)
-        {
-            std::cerr << "send file error" << std::endl;
-        }
+        std::cerr << "FileReader: Error" << std::endl;
+        self->sendErr();
+        delete reader;
     });
-    auto self = this->shared_from_this();
-    m_reader.onClose([self](FileReader* reader)
+    reader->onClose([self](FileReader* reader)
     {
-        if (reader->getResult() < 0)
-        {
-            std::cerr << "send file error" << std::endl;
-        }
-
         self->send();
     });
 }
 
 httpResp::~httpResp()
 {
-
-    std::cout << "httpResp::~httpResp()" << std::endl;
+    std::cerr << "httpResp::~httpResp()" << std::endl;
 }
 
 void httpResp::sendFile(const std::string& path)
@@ -88,6 +74,10 @@ void httpResp::sendFile(const std::string& path)
     m_headers["Content-Type"] = "application/octet-stream";
     m_filePath = path;
     m_sendType = SendType::FILE;
+    // read file
+    m_reader = new FileReader(m_client->loop);
+    initReader(m_reader);
+    m_reader->fileRead(m_filePath);
 }
 
 void httpResp::sendJson(const lept_value& json)
@@ -95,6 +85,8 @@ void httpResp::sendJson(const lept_value& json)
     m_body = json.stringify();
     m_headers["Content-Type"] = "application/json";
     m_sendType = SendType::JSON;
+
+    send();
 }
 
 void httpResp::sendStr(const std::string& str)
@@ -102,6 +94,16 @@ void httpResp::sendStr(const std::string& str)
     m_body = str;
     m_headers["Content-Type"] = "text/plain";
     m_sendType = SendType::STR;
+
+    send();
+}
+
+void httpResp::sendStr(std::string&& str)
+{
+    m_body = std::move(str);
+    m_headers["Content-Type"] = "text/plain";
+    m_sendType = SendType::STR;
+    send();
 }
 
 void httpResp::setHeader(const std::string& key, const std::string& value)
@@ -117,31 +119,31 @@ void httpResp::setStatus(httpStatus status)
 void httpResp::send()
 {
     m_head = "HTTP/1.1 " + httpStatus_str(m_status) + "\r\n";
-    for (auto header : m_headers)
+    for (const auto& header : m_headers)
     {
         m_head.append(header.first + ": " + header.second + "\r\n");
     }
 
-    if (SendType::FILE == m_sendType)
-        m_head.append("Content-Length: " + std::to_string(m_reader.getReadByte()) + "\r\n");
-    else
+    if (m_sendType == SendType::FILE)
+    {
+        m_head.append("Content-Length: " + std::to_string(m_reader->getReadByte()) + "\r\n");
+    } else
+    {
         m_head.append("Content-Length: " + std::to_string(m_body.size()) + "\r\n");
+    }
+
     m_head.append("\r\n");
 
     m_buffers.clear();
     m_buffers.push_back(uv_buf_init(const_cast<char*>(m_head.c_str()), m_head.size()));
 
-    auto req = new uv_write_t;
-
-    if (SendType::FILE == m_sendType)
+    if (m_sendType == SendType::FILE)
     {
-        m_reader.appendToBuff(m_buffers);
+        m_reader->appendToBuff(m_buffers);
     } else
     {
         m_buffers.push_back(uv_buf_init(const_cast<char*>(m_body.c_str()), m_body.size()));
     }
-
-    req->data = this;
 
     auto ctx = new WriteContext();
     ctx->req.data = ctx;
@@ -164,23 +166,21 @@ void httpResp::onWriteEnd(uv_write_t *req, int status)
     }
 
     auto ctx = static_cast<WriteContext*>(req->data);
-    if (ctx->resp->m_onComplete)
+    if (ctx->resp->m_sendType == SendType::FILE)
     {
-        ctx->resp->m_onComplete(ctx->resp.get());
-        ctx->resp->m_onComplete = nullptr;
+        delete ctx->resp->m_reader;
+    }
+    if (ctx->resp->m_onSent)
+    {
+        ctx->resp->m_onSent(ctx->resp.get());
     }
 
     delete ctx;
 }
 
-void httpResp::onCompleteAndSend(const std::function<void(httpResp*)>&& cb)
+void httpResp::onSent(const std::function<void(httpResp*)>& cb)
 {
-    m_onComplete = std::move(cb);
-
-    if (SendType::FILE == m_sendType)
-        m_reader.fileRead(m_filePath);
-    else
-        send();
+    m_onSent = cb;
 }
 
 void httpResp::clearContent()
@@ -192,3 +192,10 @@ void httpResp::clearContent()
     m_filePath.clear();
 }
 
+void httpResp::sendErr()
+{
+    m_body.clear();
+    m_headers.clear();
+    setStatus(httpStatus::INTERNAL_SERVER_ERROR);
+    sendStr(httpStatus_str(httpStatus::INTERNAL_SERVER_ERROR));
+}
