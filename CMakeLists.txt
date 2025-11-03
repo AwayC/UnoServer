@@ -15,7 +15,6 @@ add_library(UnoServer
         src/core/ssmgr.cpp
         src/core/session.cpp
         src/core/db.cpp
-        src/core/errc.cpp
         src/core/server.cpp
         src/core/router.cpp
         src/core/ThreadQue.cpp
