@@ -17,7 +17,7 @@ namespace uno {
     using dbResultCb = std::function<void(BackResult<T>)>;
     using dbExcepCb = std::function<void(std::exception_ptr)>;
 
-    class DataBase
+    class DataBase : public std::enable_shared_from_this<DataBase>
     {
     public:
         DataBase(Background* bg, std::string path) :
@@ -41,7 +41,7 @@ namespace uno {
                                     dbExcepCb cb);
 
         void users_validate_password(const std::string& username,
-                                    std::string& password,
+                                    const std::string& password,
                                     dbResultCb<bool> cb);
 
         void users_query_user(const std::string& username,
@@ -60,10 +60,10 @@ namespace uno {
                                             dbExcepCb cb);
 
 
-        void uno_game_players_has_role(int uid, dbExcepCb cb);
+        void uno_game_players_has_role(int uid, dbResultCb<bool> cb);
 
-        bool uno_game_players_has_nickname(const std::string& name,
-                                            dbExcepCb cb);
+        void uno_game_players_has_nickname(const std::string& name,
+                                            dbResultCb<bool> cb);
 
         void uno_game_players_create_role(int uid, const std::string& nickname,
                                             dbExcepCb cb);

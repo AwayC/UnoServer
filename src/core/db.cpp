@@ -20,6 +20,9 @@ namespace uno
         {
             std::cout << "BG Connect to DB" << std::endl;
             try {
+
+                m_db.exec("PRAGMA foreign_keys = ON;");
+
                 SQLite::Transaction transaction(m_db);
                 m_db.exec(R"(CREATE TABLE IF NOT EXISTS users (
                     uid INTEGER PRIMARY KEY,
@@ -153,7 +156,7 @@ namespace uno
     }
 
     void DataBase::users_validate_password(const std::string& username,
-                                            std::string& password,
+                                            const std::string& password,
                                             dbResultCb<bool> cb)
     {
         std::function<bool()> task = [this, username, password]()
@@ -184,6 +187,147 @@ namespace uno
     }
 
 
+    void DataBase::users_query_user(const std::string& username,
+                                dbResultCb<lept_value> cb)
+    {
+        std::function<lept_value()> task = [this, username]()
+        {
+           lept_value ret;
+           try
+           {
+               SQLite::Statement query(m_db, R"(SELECT uid, email, register_time, last_login_time, last_login_ip FROM users WHERE username = ?)");
+               query.bind(1, username);
+               if (query.executeStep())
+               {
+                   ret = {
+                       {"uid", query.getColumn(0).getInt()},
+                       {"username", query.getColumn(1).getString()},
+                       {"email", query.getColumn(2).getString()},
+                       {"register_time", query.getColumn(3).getInt()},
+                       {"last_login_time", query.getColumn(4).getInt()},
+                       {"last_login_ip", query.getColumn(5).getString()}
+                   };
+               }
+           } catch (std::exception& e)
+           {
+               std::cerr << "unexpected error when querying users: " << e.what() << std::endl;
+               throw;
+           }
+           return ret;
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::users_update_login_info(int uid, const std::string& login_ip,
+                                            dbExcepCb cb)
+    {
+        auto task = [this, uid, login_ip]()
+        {
+            try
+            {
+                SQLite::Statement query(m_db, R"(UPDATE users SET last_login_time = current_timestamp, last_login_ip = ? WHERE uid = ?)");
+                query.bind(1, login_ip);
+
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::user_update_email(int uid, const std::string& email,
+                                    dbExcepCb cb)
+    {
+        auto task = [this, uid, email]()
+        {
+            try
+            {
+                SQLite::Statement query(m_db, R"(UPDATE users SET email = ? WHERE uid = ?)");
+                query.bind(1, email);
+                query.bind(2, uid);
+                query.exec();
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::uno_game_players_has_role(int uid, dbResultCb<bool> cb)
+    {
+        std::function<bool()> task = [this, uid]()
+        {
+            bool ret = false;
+
+            try
+            {
+                SQLite::Statement query(m_db, R"(SELECT uid FROM uno_game_players WHERE uid = ?)");
+                query.bind(1, uid);
+                ret = query.executeStep();
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+
+            return ret;
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::uno_game_players_has_nickname(const std::string& name,
+                                                dbResultCb<bool> cb)
+    {
+        std::function<bool()> task = [this, name]()
+        {
+            bool ret = false;
+
+           try
+           {
+               SQLite::Statement query(m_db, R"(SELECT uid FROM uno_game_players WHERE nickname = ?)");
+               query.bind(1, name);
+               ret = query.executeStep();
+           } catch (std::exception& e)
+           {
+               std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+               throw;
+           }
+            return ret;
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::uno_game_players_create_role(int uid, const std::string& nickname, dbExcepCb cb)
+    {
+        auto task = [this, uid, nickname]()
+        {
+            try
+            {
+                SQLite::Statement query(m_db, R"(INSERT INTO uno_game_players VALUES (?, ?, datetime('now'), {}, {})");
+                query.bind(1, uid);
+                query.bind(1, nickname);
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+
+
 
 
 };
+
