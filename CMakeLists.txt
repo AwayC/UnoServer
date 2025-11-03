@@ -40,3 +40,10 @@ add_executable(main
 target_link_libraries(main
     UnoServer
 )
+
+# test sqlite
+add_executable(test_sqlite test/test_db/test_sqlite.cpp)
+target_link_libraries(test_sqlite
+    sqlite3
+    SQLiteCpp
+)

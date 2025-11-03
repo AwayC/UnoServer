@@ -8,46 +8,85 @@
 #include <cstring>
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <leptjson.h>
+#include "background.h"
+#include <mutex>
 
 namespace uno {
+
+    template<typename T>
+    using dbResultCb = std::function<void(BackResult<T>)>;
+    using dbExcepCb = std::function<void(std::exception_ptr)>;
+
     class DataBase
     {
-        //单例模式
-        static DataBase* getIns();
-        void connect();
-        bool users_has_username(const std::string& username);
-        bool users_has_uid(int uid);
-        int users_find_uid_bu_name(const std::string& name);
+    public:
+        DataBase(Background* bg, std::string path) :
+            m_db(path), m_bg(bg) {};
+
+        ~DataBase() = default;
+        //工厂模式
+        static DataBase* create(Background* bg, std::string path);
+        void connect(dbExcepCb cb);
+        void users_has_username(const std::string& username,
+                                    dbResultCb<bool> cb);
+
+        void users_has_uid(int uid, dbResultCb<bool> cb);
+
+        void users_find_uid_by_name(const std::string& name,
+                                    dbResultCb<int> cb);
+
         void users_create_user(const std::string& username,
                                     const std::string& password,
-                                    const std::string& email);
-        bool users_validate_password(const std::string& username,
-                                    std::string& password);
-        lept_value users_query_user(const std::string& username);
+                                    const std::string& email,
+                                    dbExcepCb cb);
+
+        void users_validate_password(const std::string& username,
+                                    std::string& password,
+                                    dbResultCb<bool> cb);
+
+        void users_query_user(const std::string& username,
+                                    dbResultCb<lept_value> cb);
 
         /**
          * update
          */
-        void users_update_login_info(int uid, const std::string& login_ip);
-        void user_update_email(int uid, const std::string& email);
-        void users_update_password(int uid, const std::string& password);
+        void users_update_login_info(int uid, const std::string& login_ip,
+                                            dbExcepCb cb);
+
+        void user_update_email(int uid, const std::string& email,
+                                            dbExcepCb cb);
+
+        void users_update_password(int uid, const std::string& password,
+                                            dbExcepCb cb);
 
 
-        void uno_game_players_has_role(int uid);
-        bool uno_game_players_has_nickname(const std::string& name);
-        void uno_game_players_create_role(int uid, const std::string& nickname);
-        lept_value uno_game_players_load_role(int uid);
+        void uno_game_players_has_role(int uid, dbExcepCb cb);
+
+        bool uno_game_players_has_nickname(const std::string& name,
+                                            dbExcepCb cb);
+
+        void uno_game_players_create_role(int uid, const std::string& nickname,
+                                            dbExcepCb cb);
+
+        void uno_game_players_load_role(int uid, dbResultCb<lept_value> cb);
+
         void uno_game_players_save_role(int uid, const std::string& data,
-                                        const std::string& summary);
-        std::string uno_game_players_load_summary(int uid);
+                                        const std::string& summary,
+                                        dbExcepCb cb);
+
+        void uno_game_players_load_summary(int uid, dbResultCb<std::string> cb);
 
 
     private:
         SQLite::Database m_db;
         std::string m_dbPath;
+        std::mutex m_mutex;
+        Background* m_bg;
 
-        DataBase();
+
+
     };
+
 };
 
 
