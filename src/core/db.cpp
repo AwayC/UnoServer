@@ -67,7 +67,7 @@ namespace uno
            bool ret = false;
            try
            {
-               SQLite::Statement query(m_db, R"(SELECT * FROM users WHERE username = ?)");
+               SQLite::Statement query(m_db, R"(SELECT uid FROM users WHERE username = ?)");
                query.bind(1, username);
                ret = query.executeStep();
            } catch (std::exception& e)
@@ -88,7 +88,7 @@ namespace uno
             bool ret = false;
             try
             {
-                SQLite::Statement query(m_db, R"(SELECT * FROM users WHERE uid = ?)");
+                SQLite::Statement query(m_db, R"(SELECT uid FROM users WHERE uid = ?)");
                 query.bind(1, uid);
                 ret = query.executeStep();
             } catch (std::exception& e)
@@ -139,7 +139,7 @@ namespace uno
 
             try
             {
-                SQLite::Statement query(m_db, R"(INSERT INTO users (username, password, salt, email, register_time) VALUES (?, ?, ?, ?, datetime('now')))");
+                SQLite::Statement query(m_db, R"(INSERT INTO users (username, password, salt, email, register_time) VALUES (?, ?, ?, ?, CURRENT_STAMP)");
                 query.bind(1, username);
                 query.bind(2, password);
                 query.bind(3, salt);
@@ -312,7 +312,7 @@ namespace uno
         {
             try
             {
-                SQLite::Statement query(m_db, R"(INSERT INTO uno_game_players VALUES (?, ?, datetime('now'), {}, {})");
+                SQLite::Statement query(m_db, R"(INSERT INTO uno_game_players (uid, nickname, creation_time, summary, data) VALUES (?, ?, CURRENT_TIMESTAMP, {}, {})");
                 query.bind(1, uid);
                 query.bind(1, nickname);
             } catch (std::exception& e)
@@ -325,6 +325,86 @@ namespace uno
         m_bg->submit(task, std::move(cb));
     }
 
+    void DataBase::uno_game_players_load_role(int uid, dbResultCb<lept_value> cb)
+    {
+        std::function<lept_value()> task = [this, uid]()
+        {
+            lept_value ret;
+
+            try
+            {
+                SQLite::Statement query(m_db, R"(SELECT nickname, creation_time, summary, data FROM uno_game_players WHERE uid = ?)");
+                query.bind(1, uid);
+                if (query.executeStep())
+                {
+                    ret = {
+                        {"uid", query.getColumn(0).getInt()},
+                        {"nickname", query.getColumn(1).getString()},
+                        {"creation_time", query.getColumn(2).getInt()},
+                        {"summary", query.getColumn(3).getString()},
+                        {"data", query.getColumn(4).getString()},
+                    };
+                }
+
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+
+            return ret;
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::uno_game_players_save_role(int uid, const lept_value& data,
+                                                const lept_value& summary,
+                                                dbExcepCb cb)
+    {
+        auto task = [this, uid, data, summary]()
+        {
+            try
+            {
+                SQLite::Statement query(m_db, R"(UPDATE uno_game_players SET data = ? summary = ? WHERE uid = ?)");
+                query.bind(3, uid);
+                query.bind(1, data.stringify());
+                query.bind(2, summary.stringify());
+                query.exec();
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
+
+    void DataBase::uno_game_players_load_summary(int uid, dbResultCb<lept_value> cb)
+    {
+        std::function<lept_value()> task = [this, uid]()
+        {
+            lept_value ret;
+            try
+            {
+                SQLite::Statement query(m_db, R"(SELECT summary FROM uno_game_players WHERE uid = ?)");
+                query.bind(1, uid);
+                if (query.executeStep())
+                {
+                    ret.parse(query.getColumn(0).getString());
+                }
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when load users: " << e.what() << std::endl;
+                throw;
+            }
+
+            return ret;
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
 
 
 

@@ -70,11 +70,11 @@ namespace uno {
 
         void uno_game_players_load_role(int uid, dbResultCb<lept_value> cb);
 
-        void uno_game_players_save_role(int uid, const std::string& data,
-                                        const std::string& summary,
+        void uno_game_players_save_role(int uid, const lept_value& data,
+                                        const lept_value& summary,
                                         dbExcepCb cb);
 
-        void uno_game_players_load_summary(int uid, dbResultCb<std::string> cb);
+        void uno_game_players_load_summary(int uid, dbResultCb<lept_value> cb);
 
 
     private:
