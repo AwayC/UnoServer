@@ -10,6 +10,7 @@
 #include <iostream>
 #include "ThreadQue.h"
 
+
 /*
 
      user(main loop)
@@ -60,6 +61,16 @@ namespace uno {
              */
             void submit(std::function<void()> task,
                         std::function<void(std::exception_ptr)> callback);
+
+            /**
+             * 阻塞
+             */
+            void do_task();
+
+            /**
+             * 非阻塞
+             */
+            bool try_do_task();
 
 
         private:

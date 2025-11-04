@@ -51,7 +51,25 @@ namespace uno
             m_taskQue.push(loop_cb);
         };
 
+    }
 
+    bool Background::try_do_task()
+    {
+        auto task = m_taskQue.try_pop();
+        if (task == std::nullopt)
+        {
+            return false;
+        }
+
+        task.value()();
+
+        return true;
+    }
+
+    void Background::do_task()
+    {
+        auto task = m_taskQue.pop();
+        task();
     }
 
 }

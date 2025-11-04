@@ -7,6 +7,7 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 
 namespace uno {
 
@@ -27,16 +28,22 @@ namespace uno {
         /**
           * @return 如果队列不为空，则返回弹出的值；否则返回 std::nullopt
           */
-        std::optional<T> pop();
+        std::optional<T> try_pop();
+
+        /**
+         *
+         * @return 阻塞
+         */
+        T pop();
 
         size_t size();
         bool empty();
 
-
-
     private:
         std::queue<T> m_que;
         std::mutex m_mutex;
+        std::condition_variable m_cond;
+        bool m_done = false;
 
     };
 
