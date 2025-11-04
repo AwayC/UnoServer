@@ -51,3 +51,10 @@ target_link_libraries(test_sqlite
     sqlite3
     SQLiteCpp
 )
+
+#test background
+add_executable(test_background test/test_background.cpp)
+target_link_libraries(test_background
+    websocket
+    UnoServer
+)

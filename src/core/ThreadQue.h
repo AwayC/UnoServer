@@ -32,12 +32,14 @@ namespace uno {
 
         /**
          *
-         * @return 阻塞
+         * @return 阻塞, 停止时返回 std::nullopt
          */
-        T pop();
+        std::optional<T> pop();
 
         size_t size();
         bool empty();
+
+        void stop();
 
     private:
         std::queue<T> m_que;

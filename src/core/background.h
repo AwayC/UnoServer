@@ -44,9 +44,9 @@ namespace uno {
     class Background {
         public:
             Background(ThreadQue<BackCallback>* callbackQue,
-                      uv_loop_t* loop):
+                      uv_async_t* async):
                 m_cbQue(callbackQue),
-                m_mainLoop(loop) { }
+                m_async(async) { }
 
             ~Background();
 
@@ -62,6 +62,21 @@ namespace uno {
             void submit(std::function<void()> task,
                         std::function<void(std::exception_ptr)> callback);
 
+
+            void start();
+
+            void stop();
+
+        private:
+            ThreadQue<BackCallback>* m_cbQue;
+            uv_async_t* m_async;
+            ThreadQue<BackTask> m_taskQue;
+            std::optional<std::thread> m_thread;
+            std::atomic<bool> m_running;
+
+
+            void call_loop();
+
             /**
              * 阻塞
              */
@@ -72,12 +87,7 @@ namespace uno {
              */
             bool try_do_task();
 
-
-        private:
-            ThreadQue<BackCallback>* m_cbQue;
-            uv_loop_t* m_mainLoop;
-            ThreadQue<BackTask> m_taskQue;
-
+            void thread_loop();
 
     };
 

@@ -28,13 +28,18 @@ namespace uno {
     }
 
     template<typename T>
-    T ThreadQue<T>::pop()
+    std::optional<T> ThreadQue<T>::pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cond.wait(lock, [this]
         {
-            return m_que.empty();
+            return m_que.empty() || m_done;
         });
+
+        if (m_done)
+        {
+            return std::nullopt;
+        }
 
         T value = m_que.pop();
         return value;
@@ -52,6 +57,13 @@ namespace uno {
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_que.size();
+    }
+
+    template<typename T>
+    void ThreadQue<T>::stop()
+    {
+        m_done = true;
+        m_cond.notify_one();
     }
 
 };

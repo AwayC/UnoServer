@@ -28,6 +28,7 @@ namespace uno
         };
 
         m_taskQue.push(back_task);
+        call_loop();
     }
 
     void Background::submit(
@@ -49,6 +50,7 @@ namespace uno
             };
 
             m_taskQue.push(loop_cb);
+            call_loop();
         };
 
     }
@@ -69,7 +71,54 @@ namespace uno
     void Background::do_task()
     {
         auto task = m_taskQue.pop();
-        task();
+
+        if (task != std::nullopt && task)
+        {
+            task.value()();
+        }
     }
+
+    void Background::call_loop()
+    {
+        uv_async_send(m_async);
+    }
+
+    void Background::start()
+    {
+        if (m_running)
+        {
+            std::cerr << "already running" << std::endl;
+            return ;
+        }
+
+        m_running = true;
+        m_thread.emplace(&thread_loop, this);
+        std::cout << "background thread started" << m_thread->get_id() << std::endl;
+    }
+
+    void Background::stop()
+    {
+        if (!m_running)
+        {
+            return ;
+        }
+
+        std::cout << "stopping background thread" << std::endl;
+
+        m_running = false;
+        m_taskQue.stop();
+
+    }
+
+    void Background::thread_loop()
+    {
+        while (m_running)
+        {
+            do_task();
+        }
+
+        std::cout << "background thread stopped" << std::endl;
+    }
+
 
 }
