@@ -4,8 +4,14 @@
 
 #pragma once
 
+#include "session.h"
+#include "router.h"
 
-class ssmgr {
+namespace uno
+{
+    class Ssmgr {
 
-};
+    };
+
+}
 

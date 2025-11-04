@@ -19,7 +19,11 @@ add_library(UnoServer
         src/core/router.cpp
         src/core/ThreadQue.cpp
         src/core/background.cpp
+
+        src/game/card.h
 )
+
+
 
 target_link_libraries(UnoServer
         sqlite3

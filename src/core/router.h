@@ -4,9 +4,13 @@
 
 #pragma once
 
+namespace uno
+{
+    class Router {
 
-class router {
+    };
+}
 
-};
+
 
 
