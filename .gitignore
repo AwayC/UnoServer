@@ -17,3 +17,6 @@ package-lock.json
 
 # 忽略本地环境文件
 .env
+
+*.db
+*.db3
