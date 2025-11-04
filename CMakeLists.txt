@@ -21,6 +21,7 @@ add_library(UnoServer
         src/core/background.cpp
 
         src/game/card.h
+        src/game/constants.h
 )
 
 
