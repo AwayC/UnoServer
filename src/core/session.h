@@ -23,7 +23,7 @@ namespace uno
             gaming,
         };
 
-        Session(WsSessionPtr ws) const
+        Session(WsSessionPtr ws)
         {
             m_wsSession = ws;
         }

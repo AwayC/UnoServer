@@ -55,7 +55,28 @@ namespace uno {
              */
             template<typename T>
             void submit(std::function<T()> task,
-                        std::function<void(BackResult<T>)> callback);
+                        std::function<void(BackResult<T>)> callback)
+            {
+                std::function<void()> back_task = [this, task, callback]()
+                {
+                    BackResult<T> result;
+                    try {
+                        result = task();
+                    } catch (std::exception& e) {
+                        result = std::current_exception();
+                    }
+
+                    std::function<void()> loop_cb = [callback, result]()
+                    {
+                        callback(result);
+                    };
+
+                    m_cbQue->push(loop_cb);
+                    call_loop();
+                };
+
+                m_taskQue.push(back_task);
+            }
             /**
              * 无返回值的任务
              */

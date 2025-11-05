@@ -7,30 +7,6 @@
 namespace uno
 {
 
-    template<typename T>
-    void Background::submit(
-        std::function<T()> task,
-        std::function<void(BackResult<T>)> callback)
-    {
-        std::function<void()> back_task = [this, task, callback]()
-        {
-            BackResult<T> result;
-            try {
-                result = task();
-            } catch (std::exception& e) {
-                result = std::current_exception();
-            }
-
-            std::function<void()> loop_cb = [callback, result]()
-            {
-                callback(result);
-            };
-        };
-
-        m_taskQue.push(back_task);
-        call_loop();
-    }
-
     void Background::submit(
         std::function<void()> task,
         std::function<void(std::exception_ptr)> callback)
@@ -49,10 +25,11 @@ namespace uno
                callback(err_ptr);
             };
 
-            m_taskQue.push(loop_cb);
+            m_cbQue->push(loop_cb);
             call_loop();
         };
 
+        m_taskQue.push(back_task);
     }
 
     bool Background::try_do_task()
@@ -92,8 +69,22 @@ namespace uno
         }
 
         m_running = true;
-        m_thread.emplace(&thread_loop, this);
-        std::cout << "background thread started" << m_thread->get_id() << std::endl;
+        try
+        {
+            m_thread.emplace(&Background::thread_loop, this);
+            if (m_thread)
+            {
+                std::cout << "background thread started , id: " << m_thread->get_id() << std::endl;
+            } else
+            {
+                std::cerr << "background thread failed to start" << std::endl;
+            }
+
+        } catch (std::exception& e)
+        {
+            std::cerr << "background thread error: " << e.what() << std::endl;
+            m_running = false;
+        }
     }
 
     void Background::stop()

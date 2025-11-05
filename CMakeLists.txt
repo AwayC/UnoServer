@@ -17,7 +17,6 @@ add_library(UnoServer
         src/core/db.cpp
         src/core/server.cpp
         src/core/router.cpp
-        src/core/ThreadQue.cpp
         src/core/background.cpp
 
         src/game/card.h

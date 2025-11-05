@@ -78,7 +78,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<bool>(task, std::move(cb));
     }
 
     void DataBase::users_has_uid(int uid, dbResultCb<bool> cb)
@@ -99,7 +99,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<bool>(task, std::move(cb));
     }
 
     void DataBase::users_find_uid_by_name(const std::string& name,
@@ -124,7 +124,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<int>(task, std::move(cb));
     }
 
     void DataBase::users_create_user(const std::string& username,
@@ -183,7 +183,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<bool>(task, std::move(cb));
     }
 
 
@@ -216,7 +216,7 @@ namespace uno
            return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<lept_value>(task, std::move(cb));
     }
 
     void DataBase::users_update_login_info(int uid, const std::string& login_ip,
@@ -280,7 +280,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<bool>(task, std::move(cb));
     }
 
     void DataBase::uno_game_players_has_nickname(const std::string& name,
@@ -303,7 +303,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<bool>(task, std::move(cb));
     }
 
     void DataBase::uno_game_players_create_role(int uid, const std::string& nickname, dbExcepCb cb)
@@ -337,13 +337,13 @@ namespace uno
                 query.bind(1, uid);
                 if (query.executeStep())
                 {
-                    ret = {
+                    ret = lept_value({
                         {"uid", query.getColumn(0).getInt()},
                         {"nickname", query.getColumn(1).getString()},
                         {"creation_time", query.getColumn(2).getInt()},
                         {"summary", query.getColumn(3).getString()},
                         {"data", query.getColumn(4).getString()},
-                    };
+                    });
                 }
 
             } catch (std::exception& e)
@@ -355,7 +355,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<lept_value>(task, std::move(cb));
     }
 
     void DataBase::uno_game_players_save_role(int uid, const lept_value& data,
@@ -403,7 +403,7 @@ namespace uno
             return ret;
         };
 
-        m_bg->submit(task, std::move(cb));
+        m_bg->submit<lept_value>(task, std::move(cb));
     }
 
 

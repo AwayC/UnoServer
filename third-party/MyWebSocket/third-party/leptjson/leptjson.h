@@ -48,6 +48,8 @@ public :
 
 	lept_value(std::initializer_list<lept_value> initList);
 
+	lept_value& operator=(lept_value val);
+
 	~lept_value() noexcept;
 
 	int parse(std::string json);
