@@ -21,14 +21,18 @@ namespace uno {
     {
     public:
         DataBase(Background* bg, std::string path) :
-            m_db(path), m_bg(bg) {};
+            m_db(path), m_bg(bg) { };
 
         ~DataBase() = default;
         //工厂模式
         static DataBase* create(Background* bg, std::string path);
         void connect(dbExcepCb cb);
+
+        /**
+         * users query
+         */
         void users_has_username(const std::string& username,
-                                    dbResultCb<bool> cb);
+                                dbResultCb<bool> cb);
 
         void users_has_uid(int uid, dbResultCb<bool> cb);
 
@@ -48,18 +52,20 @@ namespace uno {
                                     dbResultCb<lept_value> cb);
 
         /**
-         * update
+         * users update
          */
         void users_update_login_info(int uid, const std::string& login_ip,
                                             dbExcepCb cb);
 
-        void user_update_email(int uid, const std::string& email,
+        void users_update_email(int uid, const std::string& email,
                                             dbExcepCb cb);
 
         void users_update_password(int uid, const std::string& password,
                                             dbExcepCb cb);
 
-
+        /**
+         * uno game query
+         */
         void uno_game_players_has_role(int uid, dbResultCb<bool> cb);
 
         void uno_game_players_has_nickname(const std::string& name,

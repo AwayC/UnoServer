@@ -239,7 +239,7 @@ namespace uno
         m_bg->submit(task, std::move(cb));
     }
 
-    void DataBase::user_update_email(int uid, const std::string& email,
+    void DataBase::users_update_email(int uid, const std::string& email,
                                     dbExcepCb cb)
     {
         auto task = [this, uid, email]()
@@ -406,6 +406,26 @@ namespace uno
         m_bg->submit<lept_value>(task, std::move(cb));
     }
 
+    void DataBase::users_update_password(int uid, const std::string& password,
+                                            dbExcepCb cb)
+    {
+        auto task = [this, uid, password]()
+        {
+            try
+            {
+                SQLite::Statement query(m_db, R"(UPDATE users SET password = ? WHERE uid = ?)");
+                query.bind(1, password);
+                query.bind(2, uid);
+                query.exec();
+            } catch (std::exception& e)
+            {
+                std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+                throw;
+            }
+        };
+
+        m_bg->submit(task, std::move(cb));
+    }
 
 
 

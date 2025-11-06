@@ -57,3 +57,12 @@ target_link_libraries(test_background
     websocket
     UnoServer
 )
+
+#test db
+add_executable(test_db test/test_db/test_db.cpp)
+target_link_libraries(test_db
+    sqlite3
+    SQLiteCpp
+    UnoServer
+    websocket
+)
