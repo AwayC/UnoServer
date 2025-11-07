@@ -8,6 +8,7 @@
 #include "WebSocket.h"
 #include <assert.h>
 #include "leptjson.h"
+#include "router.h"
 
 namespace uno
 {
@@ -102,6 +103,11 @@ namespace uno
         }
 
         //todo call(funcname, ...args)
+        template <typename... Args>
+        void call(const std::string& funcname, Args&&... args)
+        {
+            //todo emit('s2c', funcname, ...args)
+        }
 
     private:
         WsSessionPtr m_wsSession;

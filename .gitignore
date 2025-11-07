@@ -20,3 +20,5 @@ package-lock.json
 
 *.db
 *.db3
+
+cnt_line.sh
