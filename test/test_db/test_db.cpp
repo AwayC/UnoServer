@@ -8,7 +8,7 @@
 
 using namespace uno;
 
-#define DB_PATH "example.db3"
+#define DB_PATH "test_db.db3"
 #define EXCEPT_CB_TRY(err, msg) do { \
         try \
         { \
@@ -44,8 +44,15 @@ void background_handler(uv_async_t* handle)
 
 void test_db_funcs(uv_timer_t* handle)
 {
-    static int count_times = 0;
+    static int count_times = 0, has_user = 0, has_nickname = 0;
     count_times ++;
+
+    if (count_times > 16)
+    {
+        std::cout << std::endl << "test_db done" << std::endl;
+        uv_timer_stop(&g_timer1);
+        return;
+    }
 
     std::cout << "test_db_funcs " << count_times << std::endl;
 
@@ -69,7 +76,6 @@ void test_db_funcs(uv_timer_t* handle)
      *
      */
 
-
     switch (count_times)
     {
     case 1:
@@ -82,6 +88,28 @@ void test_db_funcs(uv_timer_t* handle)
         }
     case 2:
         {
+            g_db->users_has_username("away", [](BackResult<bool> res)
+            {
+               try
+               {
+                   has_user = std::get<bool>(res);
+                   std::cout << "has_username: " << has_user << std::endl;
+               } catch (const std::exception& e)
+               {
+                   std::cout << e.what() << std::endl;
+               }
+            });
+
+            break;
+        }
+
+    case 3:
+        {
+            if (has_user)
+            {
+                std::cout << "user already exists" << std::endl;
+                break;
+            }
 
             g_db->users_create_user("away",
                             "123456",
@@ -89,22 +117,6 @@ void test_db_funcs(uv_timer_t* handle)
             [](std::exception_ptr err)
             {
                 EXCEPT_CB_TRY(err, "create user");
-            });
-
-            break;
-        }
-    case 3:
-        {
-            g_db->users_has_username("away", [](BackResult<bool> res)
-            {
-               try
-               {
-                   int has_username = std::get<bool>(res);
-                   std::cout << "has_username: " << has_username << std::endl;
-               } catch (const std::exception& e)
-               {
-                   std::cout << e.what() << std::endl;
-               }
             });
 
             break;
@@ -202,20 +214,12 @@ void test_db_funcs(uv_timer_t* handle)
         }
     case 11:
         {
-            g_db->uno_game_players_create_role(1, "away", [](std::exception_ptr err)
-            {
-                EXCEPT_CB_TRY(err, "uno game create role");
-            });
-            break;
-        }
-    case 12:
-        {
-            g_db->uno_game_players_has_role(1, [](BackResult<bool> res)
+            g_db->uno_game_players_has_nickname("away", [](BackResult<bool> res)
             {
                try
                {
-                   bool has_role = std::get<bool>(res);
-                   std::cout << "uno game has_role: " << has_role << std::endl;
+                   has_nickname = std::get<bool>(res);
+                   std::cout << "uno game has_nickname: " << has_nickname << std::endl;
                } catch (const std::exception& e)
                {
                    std::cout << e.what() << std::endl;
@@ -223,14 +227,28 @@ void test_db_funcs(uv_timer_t* handle)
             });
             break;
         }
+    case 12:
+        {
+            if (has_nickname)
+            {
+                std::cout << "nickname already exists" << std::endl;
+                break;
+            }
+
+            g_db->uno_game_players_create_role(1, "away", [](std::exception_ptr err)
+            {
+                EXCEPT_CB_TRY(err, "uno game create role");
+            });
+            break;
+        }
     case 13:
         {
-            g_db->uno_game_players_has_nickname("away", [](BackResult<bool> res)
+            g_db->uno_game_players_has_role(1, [](BackResult<bool> res)
             {
                try
                {
-                   bool& has_nickname = std::get<bool>(res);
-                   std::cout << "uno game has_nickname: " << has_nickname << std::endl;
+                   bool has_role = std::get<bool>(res);
+                   std::cout << "uno game has_role: " << has_role << std::endl;
                } catch (const std::exception& e)
                {
                    std::cout << e.what() << std::endl;
@@ -276,6 +294,12 @@ void test_db_funcs(uv_timer_t* handle)
                    std::cout << e.what() << std::endl;
                }
             });
+            break;
+        }
+
+    default:
+        {
+            uv_timer_stop(&g_timer1);
             break;
         }
     }

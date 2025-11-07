@@ -54,6 +54,25 @@ void test_insert(SQLite::Database& db)
     std::string email = "away@example.com";
     std::string salt = "123456";
 
+    bool has_user = false;
+
+    try
+    {
+        SQLite::Statement query(db, R"(SELECT uid FROM users WHERE username = ?;)");
+        query.bind(1, username);
+        has_user = query.executeStep();
+    } catch (std::exception& e)
+    {
+        std::cerr << "Unexpected error when query user: " << e.what() << std::endl;
+        throw;
+    }
+
+    if (has_user)
+    {
+        std::cout << "user exists" << std::endl;
+        return ;
+    }
+
     try
     {
         SQLite::Statement query(db,
@@ -113,8 +132,6 @@ void test()
         init_tables(db);
         test_insert(db);
         test_query(db);
-
-        test_insert(db);
 
     } catch (std::exception& e)
     {

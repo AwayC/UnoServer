@@ -139,7 +139,7 @@ namespace uno
 
             try
             {
-                SQLite::Statement query(m_db, R"(INSERT INTO users (username, password, salt, email, register_time) VALUES (?, ?, ?, ?, CURRENT_STAMP)");
+                SQLite::Statement query(m_db, R"(INSERT INTO users (username, password, salt, email, register_time) VALUES (?, ?, ?, ?, current_timestamp))");
                 query.bind(1, username);
                 query.bind(2, password);
                 query.bind(3, salt);
@@ -201,11 +201,11 @@ namespace uno
                {
                    ret = {
                        {"uid", query.getColumn(0).getInt()},
-                       {"username", query.getColumn(1).getString()},
-                       {"email", query.getColumn(2).getString()},
-                       {"register_time", query.getColumn(3).getInt()},
-                       {"last_login_time", query.getColumn(4).getInt()},
-                       {"last_login_ip", query.getColumn(5).getString()}
+                       {"username", username},
+                       {"email", query.getColumn(1).getString()},
+                       {"register_time", query.getColumn(2).getInt()},
+                       {"last_login_time", query.getColumn(3).getInt()},
+                       {"last_login_ip", query.getColumn(4).getString()}
                    };
                }
            } catch (std::exception& e)
@@ -228,7 +228,8 @@ namespace uno
             {
                 SQLite::Statement query(m_db, R"(UPDATE users SET last_login_time = current_timestamp, last_login_ip = ? WHERE uid = ?)");
                 query.bind(1, login_ip);
-
+                query.bind(2, uid);
+                query.exec();
             } catch (std::exception& e)
             {
                 std::cerr << "unexpected error when update users: " << e.what() << std::endl;
@@ -312,9 +313,10 @@ namespace uno
         {
             try
             {
-                SQLite::Statement query(m_db, R"(INSERT INTO uno_game_players (uid, nickname, creation_time, summary, data) VALUES (?, ?, CURRENT_TIMESTAMP, {}, {})");
+                SQLite::Statement query(m_db, R"(INSERT INTO uno_game_players (uid, nickname, creation_time, summary, data) VALUES (?, ?, current_timestamp, '{}', '{}'))");
                 query.bind(1, uid);
-                query.bind(1, nickname);
+                query.bind(2, nickname);
+                query.exec();
             } catch (std::exception& e)
             {
                 std::cerr << "unexpected error when update users: " << e.what() << std::endl;
@@ -338,11 +340,11 @@ namespace uno
                 if (query.executeStep())
                 {
                     ret = lept_value({
-                        {"uid", query.getColumn(0).getInt()},
-                        {"nickname", query.getColumn(1).getString()},
-                        {"creation_time", query.getColumn(2).getInt()},
-                        {"summary", query.getColumn(3).getString()},
-                        {"data", query.getColumn(4).getString()},
+                        {"uid", uid},
+                        {"nickname", query.getColumn(0).getString()},
+                        {"creation_time", query.getColumn(1).getInt()},
+                        {"summary", query.getColumn(2).getString()},
+                        {"data", query.getColumn(3).getString()},
                     });
                 }
 
@@ -366,7 +368,7 @@ namespace uno
         {
             try
             {
-                SQLite::Statement query(m_db, R"(UPDATE uno_game_players SET data = ? summary = ? WHERE uid = ?)");
+                SQLite::Statement query(m_db, R"(UPDATE uno_game_players SET data = ?, summary = ? WHERE uid = ?)");
                 query.bind(3, uid);
                 query.bind(1, data.stringify());
                 query.bind(2, summary.stringify());

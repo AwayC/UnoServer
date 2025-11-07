@@ -21,7 +21,9 @@ namespace uno {
     {
     public:
         DataBase(Background* bg, std::string path) :
-            m_db(path), m_bg(bg) { };
+            m_bg(bg),
+            m_db(path, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE)
+        {}
 
         ~DataBase() = default;
         //工厂模式
