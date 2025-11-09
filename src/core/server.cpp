@@ -5,6 +5,7 @@
 #include "server.h"
 #include "errc.h"
 #include <regex>
+#include <utility>
 #include "db.h"
 
 #define RETHROW_EXCEPTION_PTR(res, msg)                       \
@@ -22,96 +23,58 @@ namespace uno
     void Server::internalLogin(const std::string& name,
                             const std::string& password,
                             const std::string& ip,
-                            std::function<void(ErrCode, std::string)> cb)
+                            const std::function<void(BackResult<std::pair<ErrCode, std::string>>)>& cb)
     {
-        m_db.users_has_username(name, [=](BackResult<bool> res)
+        auto task = [=]()
         {
-            try
+            bool exit = this->m_db.users_has_username(name);
+            if (!exit)
             {
-                bool exit = std::get<bool>(res);
-                if (!exit)
-                {
-                    cb(ErrCode::db_not_exists, "");
-                    return;
-                }
-            } catch (const std::exception& e)
-            {
-                cb(ErrCode::api_db_error, "");
-                return ;
+                return std::make_pair(ErrCode::db_not_exists, std::string("user not exists"));
             }
 
-            this->m_db.users_validate_password(name, password, [=](BackResult<bool> res)
+            bool validate = this->m_db.users_validate_password(name, password);
+            if (!validate)
             {
-                try
-                {
-                    bool validate = std::get<bool>(res);
-                    if (!validate)
-                    {
-                        cb(ErrCode::api_bad_password, "");
-                        return;
-                    }
-                } catch (const std::exception& e)
-                {
-                    cb(ErrCode::api_db_error, "");
-                    return;
-                }
+                return std::make_pair(ErrCode::db_not_exists, std::string("password not match"));
+            }
 
-                this->m_db.users_query_user(name, [=](BackResult<lept_value> res)
-                {
-                    try
-                    {
-                        lept_value& data = std::get<lept_value>(res);
-                        int uid = data["uid"].get_number();
-                        std::string ip = data["ip"].get_string();
-                        this->m_db.users_update_login_info(uid, ip, [=](std::exception_ptr err)
-                        {
-                            if (err)
-                            {
-                                cb(ErrCode::api_db_error, "");
-                            }
-                            else
-                            {
-                                //todo jwt token
-                                std::string token = "";
-                                cb(ErrCode::ok, token);
-                            }
-                        });
-                    } catch (const std::exception& e)
-                    {
-                        cb(ErrCode::api_db_error, "");
-                        return;
-                    }
+            lept_value data = this->m_db.users_query_user(name);
 
-                });
-            });
+            int uid = data["uid"].get_number();
+            this->m_db.users_update_login_info(uid, ip);
 
+            //todo: jwt token
+            std::string token = "";
+            return std::make_pair(ErrCode::ok, token);
+        };
 
-        });
+        m_bg.submit(task, cb);
     }
 
     void Server::registerRouter()
     {
-        m_httpSvr->post('/api/register', [this](httpReq* req,
+        m_httpSvr->post("/api/register", [this](httpReq* req,
                                             httpRespPtr resp)
         {
-            pageRegister(req, resp);
+            pageRegister(req, std::move(resp));
         });
-        m_httpSvr->post('/api/login', [this](httpReq* req, httpRespPtr resp)
+        m_httpSvr->post("/api/login", [this](httpReq* req, httpRespPtr resp)
         {
             pageLogin(req, std::move(resp));
         });
-        m_httpSvr->post('/api/update_email', [this](httpReq* req, httpRespPtr resp)
+        m_httpSvr->post("/api/update_email", [this](httpReq* req, httpRespPtr resp)
         {
             pageUpdateEmail(req, std::move(resp));
         });
-        m_httpSvr->post('/api/update_password', [this](httpReq* req, httpRespPtr resp)
+        m_httpSvr->post("/api/update_password", [this](httpReq* req, httpRespPtr resp)
         {
             pageUpdatePassword(req, std::move(resp));
         });
 
         this->m_wsSvr.onConnect([this](WsSessionPtr ss)
         {
-            onSocketConnection(std::move(ss));
+            onSocketConnection(ss);
         });
     }
 
@@ -290,33 +253,39 @@ namespace uno
             }
 
             //todo internalLogin
-            internalLogin(argName, argPassword, ip, [=](ErrCode code, std::string token)
+            internalLogin(argName, argPassword, ip, [=](BackResult<std::pair<ErrCode, std::string>> res)
             {
-                if (code == ErrCode::ok)
-                {
-                    resp->sendJson({
-                        {"code", static_cast<int>(code)},
-                        {"msg", "Internal error"}
-                    });
-                }
+                ErrCode code;
+                std::string token;
 
-                else if (code == ErrCode::api_db_error)
+                try
+                {
+                    auto [code, token] = std::get<std::pair<ErrCode, std::string>>(res);
+                } catch (const std::exception& e)
                 {
                     std::cerr << "Unexpected error when login user, argName: " << argName << std::endl;
                     resp->sendJson({
                         {"code", static_cast<int>(ErrCode::api_internal_error)},
                         {"msg", "Db error"}
                     });
+                    return ;
                 }
 
-                else
+                if (code != ErrCode::ok)
                 {
-                    std::cerr << "_internalLogin unexpected result: " << static_cast<int>(code) << std::endl;
+                    std::cerr << "internalLogin unexpected result: " << token << std::endl;
                     resp->sendJson({
                         {"code", static_cast<int>(ErrCode::api_internal_error)},
                         {"msg", "Internal error"}
                     });
-                }`
+                    return ;
+                }
+
+                resp->sendJson({
+                    {"code", static_cast<int>(ErrCode::ok)},
+                    {"msg", "OK"},
+                    {"data", {{"token", token}} }
+                });
 
             });
         });

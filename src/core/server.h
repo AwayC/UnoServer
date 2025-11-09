@@ -29,11 +29,11 @@ namespace uno
             m_staticDir("/../static/"),
             m_httpSvr(HttpServer::create( UNO_SERVER_IP, UNO_SERVER_PORT)),
             m_wsSvr(m_httpSvr),
-            m_loop_ctx({m_httpSvr->getLoop(), {}, {}}),
             m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
             m_db(&m_bg, UNO_DB_PATH)
         {
             //todo init server
+            m_loop_ctx.loop = m_httpSvr->getLoop();
             registerRouter();
         }
 
@@ -66,7 +66,7 @@ namespace uno
         void internalLogin(const std::string& name,
                         const std::string& password,
                         const std::string& ip,
-                        std::function<void(ErrCode, std::string)> cb);
+                        const std::function<void(BackResult<std::pair<ErrCode, std::string>>)>& cb);
 
         void registerRouter();
 
