@@ -29,9 +29,18 @@ namespace uno
             m_staticDir("/../static/"),
             m_httpSvr(HttpServer::create( UNO_SERVER_IP, UNO_SERVER_PORT)),
             m_wsSvr(m_httpSvr),
-            m_loop(m_httpSvr->getLoop())
+            m_loop_ctx({m_httpSvr->getLoop(), {}, {}}),
+            m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
+            m_db(&m_bg, UNO_DB_PATH)
         {
             //todo init server
+            registerRouter();
+        }
+
+
+        const DataBase* get_db() const
+        {
+            return &m_db;
         }
 
         void run();
@@ -43,11 +52,21 @@ namespace uno
         HttpServerPtr m_httpSvr;
         WsServer m_wsSvr;
 
-        uv_loop_t* m_loop;
+        DataBase m_db;
+        Background m_bg;
+
+        struct
+        {
+            uv_loop_t* loop;
+            uv_async_t async;
+            ThreadQue<BackCallback> que;
+        } m_loop_ctx;
+
 
         void internalLogin(const std::string& name,
                         const std::string& password,
-                        const std::string& ip);
+                        const std::string& ip,
+                        std::function<void(ErrCode, std::string)> cb);
 
         void registerRouter();
 
@@ -57,17 +76,19 @@ namespace uno
 
         void onServerListen();
 
+        void onSocketConnection(const WsSessionPtr& socket);
+
         void onUpdate();
 
-        void pageIndex();
+        void pageIndex(httpReq* req, httpRespPtr resp);
 
-        void pageRegisgter();
+        void pageRegister(httpReq* req, httpRespPtr resp);
 
-        void pageLogin();
+        void pageLogin(httpReq* req, httpRespPtr resp);
 
-        void pageUpdateEmail();
+        void pageUpdateEmail(httpReq* req, httpRespPtr resp);
 
-        void pageUpdatePassword();
+        void pageUpdatePassword(httpReq* req, httpRespPtr resp);
 
     };
 }

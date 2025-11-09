@@ -44,7 +44,7 @@ namespace uno {
         api_room_cannot_leave_at_this_time = -1215,
 
         db_exists = -2000,
-        db_not_found = -2001,
+        db_not_exists = -2001,
 
     };
 

@@ -19,15 +19,13 @@ namespace uno
             std::cout << "call function: " << funcname << std::endl;
             try
             {
-                switch (funcname)
+                if (funcname == "add")
                 {
-                case "add":
-                    std::cout << "add: " << (std::forward<Args>(args) + ...) << std::endl;
-                    //todo function apply
-                    break;
-                default:
+                    // todo function apply
+                }
+                else
+                {
                     std::cerr << "unknown function: " << funcname << std::endl;
-                    break;
                 }
             } catch (const std::exception& e)
             {
