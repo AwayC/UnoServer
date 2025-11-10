@@ -260,7 +260,9 @@ namespace uno
 
                 try
                 {
-                    auto [code, token] = std::get<std::pair<ErrCode, std::string>>(res);
+                    auto& ref = std::get<std::pair<ErrCode, std::string>>(res);
+                    code = ref.first;
+                    token = std::move(ref.second);
                 } catch (const std::exception& e)
                 {
                     std::cerr << "Unexpected error when login user, argName: " << argName << std::endl;
@@ -291,6 +293,236 @@ namespace uno
         });
     }
 
+    void Server::pageLogin(httpReq* req, httpRespPtr resp)
+    {
+        std::string ip;
+        std::string argName, argPassword;
 
+        if (req->headers.find("x-forwarded-for") != req->headers.end())
+        {
+            ip = req->headers["x-forwarded-for"];
+        } else
+        {
+            ip = req->ip;
+        }
+
+        try
+        {
+            lept_value body;
+            body.parse(req->body);
+            argName = body["name"].get_string();
+            argPassword = body["password"].get_string();
+        } catch (const std::exception& e)
+        {
+            std::cerr << "pageLogin error: " << e.what() << std::endl;
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_bad_req)},
+                {"msg", "Bad request"}
+            });
+            return ;
+        }
+
+        internalLogin(argName, argPassword, ip, [=](BackResult<std::pair<ErrCode, std::string>> res)
+        {
+            ErrCode code;
+            std::string token;
+
+            try
+            {
+                auto& ref = std::get<std::pair<ErrCode, std::string>>(res);
+                code = ref.first;
+                token = std::move(ref.second);
+            } catch (const std::exception& e)
+            {
+                std::cerr << "Unexpected error when login user, argName: " << argName << std::endl;
+                resp->sendJson({
+                    {"code", static_cast<int>(ErrCode::api_internal_error)},
+                    {"msg", "Db error"}
+                });
+                return ;
+            }
+
+            if (code != ErrCode::ok)
+            {
+                resp->sendJson({
+                    {"code", static_cast<int>(ErrCode::api_bad_password)},
+                    {"msg", "Bad password"}
+                });
+                return ;
+            }
+
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::ok)},
+                {"msg", "OK"},
+                {"data", {{"token", token}} }
+            });
+
+        });
+    }
+
+    void Server::pageUpdateEmail(httpReq* req, httpRespPtr resp)
+    {
+        std::string argToken, argEmail;
+
+        try
+        {
+            lept_value body;
+            body.parse(req->body);
+
+            argToken = body["token"].get_string();
+            argEmail = body["email"].get_string();
+        } catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_bad_req)},
+                {"msg", "Bad request"}
+            });
+        }
+
+        if (argEmail.length() > 100)
+        {
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_internal_error)},
+                {"msg", "Email error"}
+            });
+        }
+
+        std::regex re(
+            R"(^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$)"
+        );
+        std::string emailLower = argEmail;
+        std::transform(emailLower.begin(), emailLower.end(), emailLower.begin(), ::tolower);
+
+        if (!std::regex_match(emailLower, re)) {
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_email_invalid)},
+                {"msg", "Invalid email"}
+            });
+            return;
+        }
+
+        lept_value payload;
+        try
+        {
+            //todo: jwt verify
+            payload.parse(argToken);
+        } catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_bad_token)}
+            });
+        }
+
+        int uid = payload["uid"].get_number();
+        assert(uid);
+
+        m_db.users_update_email(uid, argEmail, [=](std::exception_ptr err)
+        {
+            if (err)
+            {
+                std::cerr << "Unexcepted error when update email, uid: " << uid << std::endl;
+                resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_internal_error)},
+                {"msg", "Db error"}
+                });
+
+                return ;
+            }
+
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::ok)},
+                {"msg", "OK"}
+            });
+        });
+    }
+
+    void Server::pageUpdatePassword(httpReq* req, httpRespPtr resp)
+    {
+        std::string argToken, argPassword;
+        try
+        {
+            lept_value body;
+            body.parse(req->body);
+
+            argToken = body["token"].get_string();
+            argPassword = body["password"].get_string();
+        } catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_bad_password)},
+                {"msg", "Bad password"}
+            });
+        }
+
+        if (argPassword.length() > 32)
+        {
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_password_too_long)},
+                {"msg", "Password too long"}
+            });
+            return ;
+        }
+
+        if (argPassword.length() < 3)
+        {
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_password_too_short)},
+                {"msg", "Password too short"}
+            });
+            return ;
+        }
+
+        lept_value payload;
+        try
+        {
+            //todo: jwt verify
+            payload.parse(argPassword);
+        } catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_bad_password)},
+                {"msg", "Bad token"}
+            });
+        }
+
+        int uid = payload["uid"].get_number();
+        assert(uid);
+
+        m_db.users_update_password(uid, argPassword, [=](std::exception_ptr err)
+        {
+            if (err)
+            {
+                std::cerr << "Unexcepted error when update password, uid: " << uid << std::endl;
+                resp->sendJson({
+                {"code", static_cast<int>(ErrCode::api_internal_error)},
+                {"msg", "Db error"}
+                });
+                return ;
+            }
+
+            resp->sendJson({
+                {"code", static_cast<int>(ErrCode::ok)},
+                {"msg", "OK"}
+            });
+        });
+    }
+
+    void Server::run()
+    {
+        m_db.connect([=](std::exception_ptr err)
+        {
+            if (err)
+            {
+                this->onDbConnectFailed();
+                return ;
+            }
+
+            this->onDbConnected();
+        });
+    }
 
 }
