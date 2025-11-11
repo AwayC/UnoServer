@@ -41,12 +41,16 @@ namespace uno
 
             lept_value data = this->m_db.users_query_user(name);
 
-            int uid = data["uid"].get_number();
+            int uid = data["uid"].get_integer();
             this->m_db.users_update_login_info(uid, ip);
 
-            //todo: jwt token
-            std::string token = "";
-            return std::make_pair(ErrCode::ok, token);
+            //返回 jwt
+            std::string token = JwtUtil::sign({
+                {"uid", uid},
+                {"username", data["username"].get_string()},
+                {"email", data["email"].get_string()}
+            }, this->m_cfg["secret"].get_string(), 30);
+            return std::make_pair(ErrCode::ok, std::move(token));
         };
 
         m_bg.submit(task, cb);
@@ -95,6 +99,7 @@ namespace uno
     {
         std::cout << "Server listening" << std::endl;
     }
+
 
     void Server::onSocketConnection(const WsSessionPtr& socket)
     {
@@ -405,8 +410,9 @@ namespace uno
         lept_value payload;
         try
         {
-            //todo: jwt verify
-            payload.parse(argToken);
+           payload = JwtUtil::verify(argToken,
+                                    this->m_cfg["secret"].get_string(),
+                                    12);
         } catch (const std::exception& e)
         {
             std::cerr << e.what() << std::endl;
@@ -415,7 +421,7 @@ namespace uno
             });
         }
 
-        int uid = payload["uid"].get_number();
+        int uid = payload["uid"].get_integer();
         assert(uid);
 
         m_db.users_update_email(uid, argEmail, [=](std::exception_ptr err)
@@ -478,8 +484,9 @@ namespace uno
         lept_value payload;
         try
         {
-            //todo: jwt verify
-            payload.parse(argPassword);
+            payload = JwtUtil::verify(argToken,
+                                    this->m_cfg["secret"].get_string(),
+                                    12);
         } catch (const std::exception& e)
         {
             std::cerr << e.what() << std::endl;
@@ -489,7 +496,7 @@ namespace uno
             });
         }
 
-        int uid = payload["uid"].get_number();
+        int uid = payload["uid"].get_integer();
         assert(uid);
 
         m_db.users_update_password(uid, argPassword, [=](std::exception_ptr err)
