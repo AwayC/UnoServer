@@ -59,7 +59,7 @@ namespace uno
             m_uid2session[session->uid()] = session;
         }
 
-        void on_message(con);
+
     };
 
 }

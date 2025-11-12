@@ -33,7 +33,42 @@ namespace uno
     {
         auto ss = std::make_shared<Session>(socket);
 
-        socket->onMessage([this, ])
+        auto weak_ss = std::weak_ptr<Session>(ss);
+        socket->onMessage([this, weak_ss](WsSessionPtr socket)
+        {
+            if (auto ss = weak_ss.lock())
+            {
+                lept_value args = socket->getJsonMessage();
+                try
+                {
+                    auto evt = args.get_array_element(0).get_string();
+                    if (evt == "c2s")
+                    {
+                        // on_c2s_msg(ss, args);
+                    }
+                } catch (const std::exception& err)
+                {
+                    std::cerr << err.what() << std::endl;
+                }
+            }
+        });
+
+        socket->onError([this, weak_ss](WsSessionPtr socket, const std::exception& err)
+        {
+            if (auto ss = weak_ss.lock())
+            {
+                on_error(ss, err);
+            }
+        });
+
+        socket->onClose([this, weak_ss](const WsSessionPtr& socket)
+        {
+            if (auto ss = weak_ss.lock())
+            {
+                on_disconnect(ss, "close");
+            }
+        });
+
 
         m_sessions.emplace_back(ss);
     }
