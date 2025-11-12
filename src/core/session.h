@@ -9,6 +9,7 @@
 #include <assert.h>
 #include "leptjson.h"
 #include "router.h"
+#include "types.h"
 
 namespace uno
 {
@@ -49,14 +50,19 @@ namespace uno
             return m_state;
         }
 
-        std::string nick() const
+        const std::string& nick() const
         {
             return m_nick;
         }
 
-        lept_value summary() const
+        const summary_t& summary() const
         {
             return m_summary;
+        }
+
+        const data_t& data() const
+        {
+            return m_data;
         }
 
         bool dirty() const
@@ -94,8 +100,8 @@ namespace uno
         }
 
         void attach_data(const std::string& nick,
-                        const lept_value& summary,
-                        const lept_value& data)
+                        const summary_t& summary,
+                        const data_t& data)
         {
             m_nick = nick;
             m_summary = summary;
@@ -107,6 +113,14 @@ namespace uno
         void call(const std::string& funcname, Args&&... args)
         {
             //todo emit('s2c', funcname, ...args)
+            std::vector<lept_value> arr;
+            arr.emplace_back("s2c");
+            arr.emplace_back(funcname);
+            // 折叠表达式，解包
+            (arr.emplace_back(std::forward<Args>(args)), ...);
+            lept_value lv(std::move(arr));
+
+            m_wsSession->send(lv);
         }
 
     private:
@@ -118,8 +132,8 @@ namespace uno
         State m_state = State::connected;
 
         std::string m_nick;
-        lept_value m_summary;
-        lept_value m_data;
+        summary_t m_summary;
+        data_t m_data;
 
         bool m_dirty = false;
         int m_last_save_time = 0;
