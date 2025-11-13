@@ -31,27 +31,7 @@ namespace uno
 
         void on_disconnect(SessionPtr& session, const std::string& reason);
 
-        template<typename... Args>
-        void on_c2s_msg(const SessionPtr& session,
-                        const std::string& funcname,
-                        Args&&... args)
-        {
-            if (Router::router().contain_c2s(funcname))
-            {
-                std::cerr << "Undefined msg: " << funcname << ", uid: " << session->uid() << std::endl;
-                return ;
-            }
-
-            try
-            {
-                Router::router().call_c2s(funcname, session, std::forward<Args>(args)...);
-            } catch (const std::exception& e)
-            {
-                std::cerr << "Error while dispatch c2s msg" << std::endl;
-                std::cerr << e.what() << std::endl;
-            }
-
-        }
+        void on_c2s_msg(SessionPtr& session, const lept_value& args);
 
         void on_attach(SessionPtr& session)
         {
