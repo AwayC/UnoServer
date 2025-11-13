@@ -39,6 +39,39 @@ namespace uno
             m_uid2session[session->uid()] = session;
         }
 
+        void detach(SessionPtr& session, const std::string& reason)
+        {
+            session->call("logout_ntf", reason);
+            on_disconnect(session, reason);
+
+            session->socket()->close();
+        }
+
+        bool has_session(int uid)
+        {
+            return m_uid2session.contains(uid);
+        }
+
+        SessionPtr find_session(int uid)
+        {
+            return m_uid2session[uid];
+        }
+
+        size_t get_session_count()
+        {
+            return m_uid2session.size();
+        }
+
+        void update_session(SessionPtr& session)
+        {
+            //todo
+        }
+
+        void update(time_t now)
+        {
+            //todo
+        }
+
 
     };
 
