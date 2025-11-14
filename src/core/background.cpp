@@ -62,29 +62,31 @@ namespace uno
 
     void Background::start()
     {
-        if (m_running)
+        if (!m_running.exchange(true))
         {
-            std::cerr << "already running" << std::endl;
-            return ;
-        }
+            try
+            {
+                m_thread.emplace(&Background::thread_loop, this);
+                if (m_thread)
+                {
+                    std::cout << "background thread started , id: " << m_thread->get_id() << std::endl;
+                } else
+                {
+                    std::cerr << "background thread failed to start" << std::endl;
+                }
 
-        m_running = true;
-        try
-        {
-            m_thread.emplace(&Background::thread_loop, this);
-            if (m_thread)
+            } catch (std::exception& e)
             {
-                std::cout << "background thread started , id: " << m_thread->get_id() << std::endl;
-            } else
-            {
-                std::cerr << "background thread failed to start" << std::endl;
+                std::cerr << "background thread error: " << e.what() << std::endl;
+                m_running = false;
             }
 
-        } catch (std::exception& e)
-        {
-            std::cerr << "background thread error: " << e.what() << std::endl;
-            m_running = false;
         }
+        else
+        {
+            std::cerr << "background thread already running" << std::endl;
+        }
+
     }
 
     void Background::stop()

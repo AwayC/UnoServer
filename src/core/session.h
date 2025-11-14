@@ -25,7 +25,8 @@ namespace uno
             gaming,
         };
 
-        Session(WsSessionPtr ws)
+        Session(WsSessionPtr ws) :
+            m_last_save_time(std::chrono::system_clock::time_point::min())
         {
             m_wsSession = ws;
         }
@@ -55,12 +56,12 @@ namespace uno
             return m_nick;
         }
 
-        const summary_t& summary() const
+        const lept_value& summary() const
         {
             return m_summary;
         }
 
-        const data_t& data() const
+        const lept_value& data() const
         {
             return m_data;
         }
@@ -70,7 +71,7 @@ namespace uno
             return m_dirty;
         }
 
-        int last_save_time() const
+        std::chrono::system_clock::time_point last_save_time() const
         {
             return m_last_save_time;
         }
@@ -85,9 +86,10 @@ namespace uno
             m_dirty = true;
         }
 
-        void set_undirty()
+        void set_undirty(const std::chrono::system_clock::time_point& now)
         {
             m_dirty = false;
+            m_last_save_time = now;
         }
 
         void attach(int uid, const std::string& name, const std::string& email)
@@ -132,13 +134,11 @@ namespace uno
         State m_state = State::connected;
 
         std::string m_nick;
-        summary_t m_summary;
-        data_t m_data;
+        lept_value m_summary;
+        lept_value m_data;
 
         bool m_dirty = false;
-        int m_last_save_time = 0;
-
-
+        std::chrono::system_clock::time_point m_last_save_time;
 
     };
 }

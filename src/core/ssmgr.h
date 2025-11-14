@@ -7,9 +7,10 @@
 #include "session.h"
 #include "router.h"
 #include <unordered_map>
+#include <chrono>
 
 #define SESSION_ITER_COUNT    10
-#define SESSION_SAVE_DURATION (5 * 60 * 1000)
+constexpr auto SESSION_SAVE_DURATION = std::chrono::seconds(5 * 60 * 1000);
 
 namespace uno
 {
@@ -62,14 +63,56 @@ namespace uno
             return m_uid2session.size();
         }
 
-        void update_session(SessionPtr& session)
+        void update_session(SessionPtr& ss, const std::chrono::system_clock::time_point& now)
         {
             //todo
+            auto time_since_last_save = now - ss->last_save_time();
+
+            if (ss->state() >= Session::State::logged && ss->dirty()
+                && time_since_last_save >= SESSION_SAVE_DURATION)
+            {
+                std::cout << "update_session: auto save session data for " << ss->uid() << std::endl;
+                S2S::save_role_req(ss->uid(), ss->data(), ss->summary(), "", 0);
+                ss->set_undirty(now);
+            }
         }
 
-        void update(time_t now)
+        void update(const std::chrono::system_clock::time_point& now)
         {
-            //todo
+            if (!m_sessions.empty())
+            {
+                if (m_iter >= m_sessions.size())
+                {
+                    m_iter = 0;
+                }
+
+                size_t begin = m_iter;
+                size_t cnt = std::max((size_t)1, m_sessions.size() / SESSION_ITER_COUNT);
+                for (size_t i = 0;i < cnt; ++ i)
+                {
+                    auto& ss = m_sessions[i];
+                    assert(ss);
+                    try
+                    {
+                        update_session(ss, now);
+                    } catch (const std::exception& err)
+                    {
+                        std::cerr << "update: Unexpected error while update session" << std::endl;
+                        std::cerr << err.what() << std::endl;
+                    }
+
+                    m_iter ++;
+                    if (m_iter >= m_sessions.size())
+                    {
+                        m_iter = 0;
+                    }
+
+                    if (m_iter == begin)
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
 
