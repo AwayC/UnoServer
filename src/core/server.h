@@ -5,7 +5,6 @@
 #pragma once
 #include <iostream>
 #include "errc.h"
-#include "router.h"
 #include "db.h"
 #include "background.h"
 #include "httpserver.h"

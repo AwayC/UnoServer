@@ -8,7 +8,6 @@
 #include "WebSocket.h"
 #include <assert.h>
 #include "leptjson.h"
-#include "router.h"
 #include "types.h"
 
 namespace uno
@@ -102,8 +101,8 @@ namespace uno
         }
 
         void attach_data(const std::string& nick,
-                        const summary_t& summary,
-                        const data_t& data)
+                        const lept_value& summary,
+                        const lept_value& data)
         {
             m_nick = nick;
             m_summary = summary;
@@ -141,5 +140,7 @@ namespace uno
         std::chrono::system_clock::time_point m_last_save_time;
 
     };
+
+    using SessionPtr = std::shared_ptr<Session>;
 }
 

@@ -32,7 +32,7 @@ namespace uno
 
         void on_disconnect(SessionPtr& session, const std::string& reason);
 
-        void on_c2s_msg(SessionPtr& session, const lept_value& args);
+        void on_c2s_msg(SessionPtr& session, const Router::arg_t& arg);
 
         void on_attach(SessionPtr& session)
         {
@@ -72,7 +72,9 @@ namespace uno
                 && time_since_last_save >= SESSION_SAVE_DURATION)
             {
                 std::cout << "update_session: auto save session data for " << ss->uid() << std::endl;
-                S2S::save_role_req(ss->uid(), ss->data(), ss->summary(), "", 0);
+
+                Router::arg_t args = {ss->uid(), ss->data(), ss->summary(), "", 0};
+                Router::router().call_s2s("save_role_req", args);
                 ss->set_undirty(now);
             }
         }
