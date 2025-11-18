@@ -4,14 +4,17 @@
 #include "core/router.h"
 #include "core/session.h"
 #include "httpserver.h"
+#include <functional>
 
 using namespace uno;
 
 static int test_count = 0;
 static int passed_count = 0;
 
+
 #define REGISTER_S2S(func) Router::router().register_s2s(#func, S2S::func)
 #define REGISTER_C2S(func) Router::router().register_c2s(#func, C2S::func)
+
 
 namespace S2S
 {
@@ -38,8 +41,6 @@ namespace S2S
         std::cout << "S2S sync_double: " << a << std::endl;
         ++passed_count;
     }
-
-
 
     void sync_bool(bool a)
     {
@@ -78,6 +79,25 @@ namespace S2S
         std::cout << "S2S sync_args: " << i << " " << d << " " << b << " " << s << " " << a.size() << " " << o.size() << std::endl;
         ++passed_count;
     }
+
+    std::function<void()> lambda_void = []()
+    {
+        std::cout << "S2S lambda_void" << std::endl;
+        ++passed_count;
+    };
+
+    std::function<void(int)> lambda_int = [](int a)
+    {
+        std::cout << "S2S lambda_int: " << a << std::endl;
+        ++passed_count;
+    };
+
+    std::function lambda_args = [](int i, double d, bool b, std::string s, lept_value::array_t a, lept_value::object_t o)
+    {
+        std::cout << "S2S lambda_args: " << i << " " << d << " " << b << " " << s << " " << a.size() << " " << o.size() << std::endl;
+        ++passed_count;
+    };
+
 }
 
 
@@ -144,6 +164,24 @@ namespace C2S
         std::cout << "C2S sync_args: " << i << " " << d << " " << b << " " << s << " " << a.size() << " " << o.size() << std::endl;
         ++passed_count;
     }
+
+    std::function lambda_void = [](SessionPtr ss)
+    {
+        std::cout << "C2S lambda_void" << std::endl;
+        ++passed_count;
+    };
+
+    std::function lambda_int = [](SessionPtr ss, int a)
+    {
+        std::cout << "C2S lambda_int: " << a << std::endl;
+        ++passed_count;
+    };
+
+    std::function lambda_args = [](SessionPtr ss, int i, double d, bool b, std::string s, lept_value::array_t a, lept_value::object_t o)
+    {
+        std::cout << "C2S lambda_args: " << i << " " << d << " " << b << " " << s << " " << a.size() << " " << o.size() << std::endl;
+        ++passed_count;
+    };
 }
 
 #define TEST_FUNC_S2S(funcname_, ...) do { \
@@ -174,6 +212,23 @@ void test_s2s()
     TEST_FUNC_S2S(sync_object, {{"a", 1}, {"b", 2}});
     TEST_FUNC_S2S(sync_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});
 
+    TEST_FUNC_S2S(lambda_void);
+    TEST_FUNC_S2S(lambda_int, lept_value(123));
+    TEST_FUNC_S2S(lambda_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});
+
+    do {
+        ++test_count;
+        int cnt = passed_count;
+        std::function lambda_void2 = [cnt]()
+        {
+            std::cout << "C2S lambda_void2 cnt = " << cnt << std::endl;
+            ++passed_count;
+        };
+
+        Router::router().register_s2s("lambda_void2", lambda_void2);
+        Router::arg_t args_ = Router::arg_t({});
+        Router::router().call_s2s("lambda_void2", args_);
+    } while (0);
 }
 
 void test_c2s()
@@ -187,9 +242,15 @@ void test_c2s()
     TEST_FUNC_C2S(sync_array, {1, 2});
     TEST_FUNC_C2S(sync_object, {{"a", 1}, {"b", 2}});
     TEST_FUNC_C2S(sync_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});
+
+    TEST_FUNC_C2S(lambda_void);
+    TEST_FUNC_C2S(lambda_int, lept_value(123));
+    TEST_FUNC_C2S(lambda_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});
 }
 
 int main() {
+
+
     test_s2s();
     test_c2s();
 

@@ -12,6 +12,8 @@
 #include "session.h"
 #include <tuple>
 #include <type_traits>
+#include <functional>
+#include <utility>
 
 namespace uno
 {
@@ -36,11 +38,17 @@ namespace uno
     struct traits<void(*)(__VA_ARGS__ Args...)> \
     { \
         using args_tuple = std::tuple<Args...>; \
+    }; \
+        \
+    template <typename... Args> \
+    struct traits<std::function<void(__VA_ARGS__ Args...)>> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
     };
+
 
         FUNCTION_TRAITS(function_traits_s2s)
         FUNCTION_TRAITS(function_traits_c2s, SessionPtr,)
-
 
         template<typename Tuple, size_t... Is>
         static Tuple json_to_tuple_impl(const arg_t& args, std::index_sequence<Is...>)
@@ -115,7 +123,7 @@ namespace uno
 
             try
             {
-                c2s_funcs[funcname](session, args);
+                c2s_funcs[funcname](std::move(session), args);
             } catch (const std::exception& e)
             {
                 std::cerr << "Error while dispatch c2s msg: " << funcname << std::endl;
