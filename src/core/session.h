@@ -6,7 +6,7 @@
 
 #include "httpserver.h"
 #include "WebSocket.h"
-#include <assert.h>
+#include <cassert>
 #include "leptjson.h"
 #include "types.h"
 
@@ -24,10 +24,29 @@ namespace uno
             gaming,
         };
 
+        using SessionPtr = std::shared_ptr<Session>;
+
         Session(WsSessionPtr ws) :
             m_last_save_time(std::chrono::system_clock::time_point::min())
         {
             m_wsSession = ws;
+        }
+
+        Session()
+        {
+            m_last_save_time = std::chrono::system_clock::now();
+        }
+
+        ~Session() = default;
+
+        static SessionPtr create(WsSessionPtr ws)
+        {
+            return std::make_shared<Session>(ws);
+        }
+
+        static SessionPtr create()
+        {
+            return std::make_shared<Session>();
         }
 
         WsSessionPtr socket() const

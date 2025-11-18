@@ -65,3 +65,9 @@ target_link_libraries(test_db
     UnoServer
     websocket
 )
+
+#test router
+add_executable(test_router test/test_router.cpp)
+target_link_libraries(test_router
+    UnoServer
+)

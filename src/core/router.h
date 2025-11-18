@@ -10,6 +10,8 @@
 #include "leptjson.h"
 #include "types.h"
 #include "session.h"
+#include <tuple>
+#include <type_traits>
 
 namespace uno
 {
@@ -19,15 +21,26 @@ namespace uno
     public:
         using arg_t = std::vector<lept_value>;
     private:
-        template <typename T>
-        struct function_traits;
 
-        template<typename... Args>
-        struct function_traits<void(Args...)>
-        {
-            using args_tuple = std::tuple<Args...>;
-            static constexpr size_t arg_count = sizeof...(Args);
-        };
+#define FUNCTION_TRAITS(traits, ...) \
+    template <typename T> \
+    struct traits; \
+                    \
+    template <typename... Args> \
+    struct traits<void(__VA_ARGS__ Args...)> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    }; \
+            \
+    template <typename... Args> \
+    struct traits<void(*)(__VA_ARGS__ Args...)> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    };
+
+        FUNCTION_TRAITS(function_traits_s2s)
+        FUNCTION_TRAITS(function_traits_c2s, SessionPtr,)
+
 
         template<typename Tuple, size_t... Is>
         static Tuple json_to_tuple_impl(const arg_t& args, std::index_sequence<Is...>)
@@ -49,7 +62,7 @@ namespace uno
         {
             return json_to_tuple_impl<Tuple>(
                 args,
-                std::make_index_sequence<Tuple::arg_count>()
+                std::make_index_sequence<std::tuple_size_v<Tuple>>{}
             );
         }
 
@@ -64,7 +77,7 @@ namespace uno
         {
             if (!s2s_funcs.contains(funcname))
             {
-                std::cerr << "Unhandled internal msg " << funcname << std::endl;
+                std::cerr << "Unhandled internal s2s msg " << funcname << std::endl;
                 return ;
             }
 
@@ -81,7 +94,7 @@ namespace uno
         template<typename Func>
         void register_s2s(const std::string& funcname, Func func)
         {
-            using Traits = function_traits<Func>;
+            using Traits = function_traits_s2s<Func>;
             using ArgsTuple = typename Traits::args_tuple;
 
             s2s_funcs[funcname] = [func](const arg_t& args)
@@ -92,11 +105,12 @@ namespace uno
             };
         }
 
-        void call_c2s(const std::string& funcname, SessionPtr& session, const arg_t& args)
+        void call_c2s(const std::string& funcname, SessionPtr session, const arg_t& args)
         {
-            if (c2s_funcs.contains(funcname))
+            if (!c2s_funcs.contains(funcname))
             {
-                std::cerr << "Unhandled internal msg " << funcname << std::endl;
+                std::cerr << "Unhandled c2s msg " << funcname << std::endl;
+                return ;
             }
 
             try
@@ -112,15 +126,15 @@ namespace uno
         template<typename Func>
         void register_c2s(const std::string& funcname, Func func)
         {
-            using Traits = function_traits<Func>;
+            using Traits = function_traits_c2s<Func>;
             using ArgsTuple = typename Traits::args_tuple;
 
-            c2s_funcs[funcname] = [func](SessionPtr& ss, const arg_t& args)
+            c2s_funcs[funcname] = [func](SessionPtr ss, const arg_t& args)
             {
                 auto args_tuple = json_to_tuple<ArgsTuple>(args);
-                std::apply(func, ss, args_tuple);
+                auto full_tuple = std::tuple_cat(std::forward_as_tuple(ss), args_tuple);
+                std::apply(func, full_tuple);
             };
-
         }
 
 
@@ -136,10 +150,8 @@ namespace uno
 
 
     private:
-
         std::map<std::string, std::function<void(const arg_t&)>> s2s_funcs;
-        std::map<std::string, std::function<void(SessionPtr&, const arg_t&)>> c2s_funcs;
-
+        std::map<std::string, std::function<void(SessionPtr, const arg_t&)>> c2s_funcs;
 
         Router() = default;
         ~Router() = default;
