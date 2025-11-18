@@ -47,7 +47,7 @@ namespace uno
         {
             if (args.size() != sizeof...(Is))
             {
-                throw std::runtime_error("Arguments count not match" +
+                throw std::runtime_error("Arguments count not match " +
                     std::to_string(args.size()) + " != " +
                     std::to_string(sizeof...(Is)));
             }
