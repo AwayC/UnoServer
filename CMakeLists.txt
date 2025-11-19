@@ -20,6 +20,7 @@ add_library(UnoServer
 
         src/game/card.h
         src/game/constants.h
+        src/game/dbagent.h
 )
 
 

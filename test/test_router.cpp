@@ -246,6 +246,20 @@ void test_c2s()
     TEST_FUNC_C2S(lambda_void);
     TEST_FUNC_C2S(lambda_int, lept_value(123));
     TEST_FUNC_C2S(lambda_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});
+    do {
+        ++test_count;
+        int cnt = passed_count;
+        auto ss = Session::create();
+        std::function lambda_void2 = [cnt](SessionPtr ss)
+        {
+            std::cout << "C2S lambda_void2 cnt = " << cnt << std::endl;
+            ++passed_count;
+        };
+
+        Router::router().register_c2s("lambda_void2", lambda_void2);
+        Router::arg_t args_ = Router::arg_t({});
+        Router::router().call_c2s("lambda_void2", ss, args_);
+    } while (0);
 }
 
 int main() {
