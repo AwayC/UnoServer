@@ -21,6 +21,7 @@ add_library(UnoServer
         src/game/card.h
         src/game/constants.h
         src/game/dbagent.h
+        src/game/helper.h
 )
 
 
@@ -70,5 +71,11 @@ target_link_libraries(test_db
 #test router
 add_executable(test_router test/test_router.cpp)
 target_link_libraries(test_router
+    UnoServer
+)
+
+#test helper
+add_executable(test_helper test/test_helper.cpp)
+target_link_libraries(test_helper
     UnoServer
 )

@@ -17,7 +17,6 @@
 
 namespace uno
 {
-
     class Router
     {
     public:
@@ -25,26 +24,26 @@ namespace uno
     private:
 
 #define FUNCTION_TRAITS(traits, ...) \
-    template <typename T> \
-    struct traits; \
-                    \
-    template <typename... Args> \
-    struct traits<void(__VA_ARGS__ Args...)> \
-    { \
-        using args_tuple = std::tuple<Args...>; \
-    }; \
-            \
-    template <typename... Args> \
-    struct traits<void(*)(__VA_ARGS__ Args...)> \
-    { \
-        using args_tuple = std::tuple<Args...>; \
-    }; \
-        \
-    template <typename... Args> \
-    struct traits<std::function<void(__VA_ARGS__ Args...)>> \
-    { \
-        using args_tuple = std::tuple<Args...>; \
-    };
+template <typename T> \
+struct traits; \
+\
+template <typename... Args> \
+struct traits<void(__VA_ARGS__ Args...)> \
+{ \
+using args_tuple = std::tuple<Args...>; \
+}; \
+\
+template <typename... Args> \
+struct traits<void(*)(__VA_ARGS__ Args...)> \
+{ \
+using args_tuple = std::tuple<Args...>; \
+}; \
+\
+template <typename... Args> \
+struct traits<std::function<void(__VA_ARGS__ Args...)>> \
+{ \
+using args_tuple = std::tuple<Args...>; \
+};
 
 
         FUNCTION_TRAITS(function_traits_s2s)
@@ -172,7 +171,5 @@ namespace uno
 #define CALL_C2S(funcname, session, ...) do {\
         Router::router().call_c2s(funcname, session, {__VA_ARGS__}); \
     } while(0)
-
-
-
+}
 
