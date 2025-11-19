@@ -23,11 +23,19 @@ namespace uno {
         DataBase(Background* bg, std::string path) :
             m_bg(bg),
             m_db(path, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE)
-        {}
+        {
+            assert(bg);
+        }
 
         ~DataBase() = default;
         //工厂模式
         static DataBase* create(Background* bg, std::string path);
+
+        Background* get_bg() const
+        {
+            return m_bg;
+        }
+
         void connect(dbExcepCb cb);
         void connect();
 

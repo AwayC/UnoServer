@@ -164,7 +164,14 @@ namespace uno
         Router() = default;
         ~Router() = default;
     };
-}
+
+#define CALL_S2S(funcname, ...) do { \
+        Router::router().call_s2s(funcname, {__VA_ARGS__}); \
+    } while(0)
+
+#define CALL_C2S(funcname, session, ...) do {\
+        Router::router().call_c2s(funcname, session, {__VA_ARGS__}); \
+    } while(0)
 
 
 
