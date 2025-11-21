@@ -12,6 +12,7 @@
 #include "constants.h"
 #include <vector>
 #include "stater.h"
+#include <unordered_map>
 
 namespace uno
 {
@@ -58,11 +59,14 @@ namespace uno
         struct Player
         {
             std::string nick;   // 昵称
+            std::string email;   // 邮箱
             std::vector<card_t> rest;   // 剩余手牌 （state == 1)
             bool ready = false;     // 是否就绪 （state == 0)
             bool offline = false;   // 是否离线
             time_stamp m_last_save_time = time_stamp::min(); // 最后保存时间
         };
+
+        using PlayerMap = std::unordered_map<int, Player>;
 
         int id = 0;
         State state = State::idle;
@@ -71,7 +75,7 @@ namespace uno
         int max_players = 5;    // 房间大小
         int curr_players = 1;    // 当前玩家数
 
-        std::vector<Player> players; // 玩家列表
+        PlayerMap players; // 玩家列表
 
         //seq: [] 桌面顺序
         int last_win = 0;   // 最后赢家
@@ -86,7 +90,7 @@ namespace uno
         int timer = 0; // 当前倒计时 （state == 1）
         // heep: [] 牌堆
         card_t last = 0;  // 最后一张牌
-        int last_chg_color_ = 0; // 最后一次变化的颜色
+        int last_chg_color = 0; // 最后一次变化的颜色
         int draw = 0; // 连续罚牌计数
         int last_can_report = -1; // 可以被举报的玩家
         bool can_play_ahead = false; // 是否允许抢牌
@@ -106,6 +110,15 @@ namespace uno
             return ins;
         }
 
+        struct PlayerSnapshot
+        {
+            std::string nick;
+            std::string email;
+            int rest_count;
+            bool ready;
+            bool offline;
+        };
+
         struct RoomSnapshot
         {
             int id;
@@ -114,7 +127,7 @@ namespace uno
             int owner;
             int max_players;
             int curr_players;
-            std::vector<Room::Player> players;
+            std::unordered_map<int, PlayerSnapshot> players;
             // seq;
             int last_win;
             Room::GameState game_state;
@@ -132,14 +145,7 @@ namespace uno
             std::vector<card_t> my_cards;
         };
 
-        struct PlayerSnapshot
-        {
-            std::string nick;
-            std::string email;
-            int rest_count;
-            bool ready;
-            bool offline;
-        };
+
 
 
     private:
@@ -147,7 +153,7 @@ namespace uno
         int m_next_room_id;
 
         RoomSnapshot get_snapshot(RoomPtr, int uid);
-        void game_start(RoomPtr room);
+        static PlayerSnapshot get_player_snapshot(RoomPtr, int uid);
 
 
     };
