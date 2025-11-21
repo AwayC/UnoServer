@@ -8,9 +8,11 @@
 
 namespace uno {
 
+    using card_t = int;
+
     namespace card
     {
-        enum
+        enum Color
         {
             COLOR_ALL,
             COLOR_RED,
@@ -19,7 +21,7 @@ namespace uno {
             COLOR_GREEN,
         };
 
-        enum
+        enum Func
         {
             FUNC_NONE,
             FUNC_0,
@@ -39,45 +41,45 @@ namespace uno {
             FUNC_CHGCOLOR,
         };
 
-        bool is_valid_color(int c)
+        bool is_valid_color(card_t c)
         {
             return c >= COLOR_ALL && c <= COLOR_GREEN;
         }
 
-        bool is_valid_func(int f)
+        bool is_valid_func(card_t f)
         {
             return f >= FUNC_NONE && f <= FUNC_CHGCOLOR;
         }
 
-        int get_color(int c)
+        int get_color(card_t c)
         {
             int ret = c & 7;
             assert(is_valid_color(ret));
             return ret;
         }
 
-        int get_func(int c)
+        int get_func(card_t c)
         {
             int ret = (c >> 3) & 15;
             assert(is_valid_func(ret));
             return ret;
         }
 
-        int compose_card(int c, int f)
+        card_t compose_card(int c, int f)
         {
             assert(is_valid_color(c));
             assert(is_valid_func(f));
             return (c & 7) | ((f & 15) << 3);
         }
 
-        std::pair<int, int> decompose_card(int c)
+        std::pair<int, int> decompose_card(card_t c)
         {
             int color = get_color(c);
             int func = get_color(c);
             return { color, func };
         }
 
-        bool is_valid_card(int c)
+        bool is_valid_card(card_t c)
         {
             int color = c & 7;
             if (!is_valid_color(color))
@@ -98,13 +100,13 @@ namespace uno {
             return true;
         }
 
-        bool is_func_card(int c)
+        bool is_func_card(card_t c)
         {
             int func = get_func(c);
             return (func == FUNC_SKIP || func == FUNC_REVERSE || func == FUNC_DRAW2 || func == FUNC_DRAW4 || func == FUNC_CHGCOLOR);
         }
 
-        inline const int CARD_SET[] = {
+        inline const card_t CARD_SET[] = {
             // 数字牌（0~9，4种颜色，其中1~9各2张，0 1张）
             compose_card(COLOR_RED, FUNC_0),
             compose_card(COLOR_RED, FUNC_1),

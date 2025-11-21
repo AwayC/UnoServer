@@ -3,7 +3,7 @@
 //
 
 #include "lobby.h"
-#include "websocket.h"
+#include "WebSocket.h"
 #include "core/config.h"
 
 namespace uno
@@ -36,7 +36,7 @@ namespace uno
             if (ss->state() != Session::State::connected)
             {
                std::cerr << "Invalid login message" << std::endl;
-               ss->call("login_rsp", ErrCode::api_invalid_call);
+               ss->call("login_rsp", (int)ErrCode::api_invalid_call);
                return ;
             }
 
@@ -48,7 +48,7 @@ namespace uno
             catch (const std::exception& e)
             {
                std::cerr << e.what() << std::endl;
-               ss->call("login_rsp", ErrCode::api_bad_token);
+               ss->call("login_rsp", (int)ErrCode::api_bad_token);
                return ;
             }
 
@@ -75,7 +75,7 @@ namespace uno
             if (ss->state() != Session::State::create_role)
             {
                std::cerr << "Invalid create role message" << std::endl;
-               ss->call("create_role_rsp", ErrCode::api_invalid_call);
+               ss->call("create_role_rsp", (int)ErrCode::api_invalid_call);
                return ;
             }
 
@@ -131,7 +131,7 @@ namespace uno
             if (ret != static_cast<int>(ErrCode::ok))
             {
                 std::cerr << "Load role data error, uid: " << uid << ", code " << ret << std::endl;
-                ss->call("login_rsp", ErrCode::api_db_error);
+                ss->call("login_rsp", (int)ErrCode::api_db_error);
             }
 
             ss->attach_data(nick,
@@ -182,7 +182,13 @@ namespace uno
                 std::cerr << "Failed to save role data for uid: " << uid << std::endl;
             }
         }
+
+        void round_flow(int uid, int stat)
+        {
+            std::cout << "round flow for uid: " << uid << ", stat: " << stat << std::endl;
+        }
     }
+
 
     Lobby::Lobby()
     {
@@ -195,14 +201,16 @@ namespace uno
         REGISTER_FUNC_S2S(load_role_rsp);
         REGISTER_FUNC_S2S(create_role_rsp);
         REGISTER_FUNC_S2S(save_role_rsp);
+        REGISTER_FUNC_S2S(round_flow);
+
 
         REGISTER_FUNC_C2S(create_role_req);
         REGISTER_FUNC_C2S(login_req);
         REGISTER_FUNC_C2S(logout_req);
 
-
 #undef REGISTER_FUNC_S2S
 
+        //todo evtcenter.on("logout");
 
     }
 

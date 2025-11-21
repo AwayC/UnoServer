@@ -8,7 +8,7 @@
 
 namespace uno {
 
-    class GameStatr
+    class GameStater
     {
     public:
         struct Stat

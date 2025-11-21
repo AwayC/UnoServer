@@ -5,7 +5,7 @@
 #pragma once
 
 #include <cassert>
-#include "websocket.h"
+#include "WebSocket.h"
 #include "../core/router.h"
 #include "../core/session.h"
 #include "../core/errc.h"
