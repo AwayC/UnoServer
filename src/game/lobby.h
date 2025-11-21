@@ -2,15 +2,23 @@
 // Created by AWAY on 25-11-19.
 //
 
-#ifndef LOBBY_H
-#define LOBBY_H
+#pragma once
 
+#include <cassert>
+#include "websocket.h"
+#include "../core/router.h"
+#include "../core/session.h"
+#include "../core/errc.h"
+#include "../core/ssmgr.h"
 
+namespace uno {
 
-class lobby {
+    class Lobby
+    {
+    public:
+        Lobby();
+    };
+
 
 };
 
-
-
-#endif //LOBBY_H

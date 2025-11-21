@@ -17,6 +17,7 @@
 
 namespace uno
 {
+
     class Router
     {
     public:
@@ -24,30 +25,32 @@ namespace uno
     private:
 
 #define FUNCTION_TRAITS(traits, ...) \
-template <typename T> \
-struct traits; \
-\
-template <typename... Args> \
-struct traits<void(__VA_ARGS__ Args...)> \
-{ \
-using args_tuple = std::tuple<Args...>; \
-}; \
-\
-template <typename... Args> \
-struct traits<void(*)(__VA_ARGS__ Args...)> \
-{ \
-using args_tuple = std::tuple<Args...>; \
-}; \
-\
-template <typename... Args> \
-struct traits<std::function<void(__VA_ARGS__ Args...)>> \
-{ \
-using args_tuple = std::tuple<Args...>; \
-};
+    template <typename T> \
+    struct traits; \
+        \
+    template <typename... Args> \
+    struct traits<void(__VA_ARGS__ Args...)> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    }; \
+        \
+    template <typename... Args> \
+    struct traits<void(*)(__VA_ARGS__ Args...)> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    }; \
+        \
+    template <typename... Args> \
+    struct traits<std::function<void(__VA_ARGS__ Args...)>> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    };
 
 
         FUNCTION_TRAITS(function_traits_s2s)
         FUNCTION_TRAITS(function_traits_c2s, SessionPtr,)
+
+#undef FUNCTION_TRAITS
 
         template<typename Tuple, size_t... Is>
         static Tuple json_to_tuple_impl(const arg_t& args, std::index_sequence<Is...>)
@@ -171,5 +174,14 @@ using args_tuple = std::tuple<Args...>; \
 #define CALL_C2S(funcname, session, ...) do {\
         Router::router().call_c2s(funcname, session, {__VA_ARGS__}); \
     } while(0)
+
+#define REGISTER_S2S(funcname, func) do { \
+        Router::router().register_s2s(funcname, func); \
+    } while (0)
+
+#define REGISTER_C2S(funcname, func) do { \
+        Router::router().register_c2s(funcname, func); \
+    } while (0)
+
 }
 

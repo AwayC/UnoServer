@@ -17,11 +17,18 @@ add_library(UnoServer
         src/core/server.cpp
         src/core/router.cpp
         src/core/background.cpp
+        src/core/config.h
+        src/core/config.cpp
+
 
         src/game/card.h
         src/game/constants.h
         src/game/dbagent.h
         src/game/helper.h
+        src/game/lobby.h
+        src/game/lobby.cpp
+        src/game/stater.h
+        src/game/stater.cpp
 )
 
 

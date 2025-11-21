@@ -59,7 +59,7 @@ namespace uno
             return m_uid;
         }
 
-        std::string name() const
+        const std::string& name() const
         {
             return m_name;
         }
@@ -72,6 +72,11 @@ namespace uno
         const std::string& nick() const
         {
             return m_nick;
+        }
+
+        const std::string& email() const
+        {
+            return m_email;
         }
 
         const lept_value& summary() const
@@ -134,10 +139,10 @@ namespace uno
         {
             //todo emit('s2c', funcname, ...args)
             std::vector<lept_value> arr;
-            arr.emplace_back("s2c");
-            arr.emplace_back(funcname);
+            arr.emplace_back(lept_value("s2c"));
+            arr.emplace_back(lept_value(funcname));
             // 折叠表达式，解包
-            (arr.emplace_back(std::forward<Args>(args)), ...);
+            (arr.emplace_back(lept_value(std::forward<Args>(args))), ...);
             lept_value lv(std::move(arr));
 
             m_wsSession->send(lv);

@@ -16,31 +16,15 @@ namespace uno
 {
     using SessionPtr = std::shared_ptr<Session>;
     class Ssmgr {
+    public:
+        static Ssmgr& instance()
+        {
+            static Ssmgr ssmgr; return ssmgr;
+        }
 
         void accept(WsSessionPtr& socket);
 
-    private:
-
-        std::vector<SessionPtr> m_sessions;
-        std::unordered_map<int, SessionPtr> m_uid2session;
-        size_t m_iter = 0;
-
-        void on_error(const SessionPtr& session, const std::exception& err)
-        {
-            std::cerr << err.what() << std::endl;
-        }
-
-        void on_disconnect(SessionPtr& session, const std::string& reason);
-
-        void on_c2s_msg(SessionPtr& session, const Router::arg_t& arg);
-
-        void on_attach(SessionPtr& session)
-        {
-            assert(!m_uid2session.contains(session->uid()));
-            m_uid2session[session->uid()] = session;
-        }
-
-        void detach(SessionPtr& session, const std::string& reason)
+        void detach(SessionPtr session, const std::string& reason)
         {
             session->call("logout_ntf", reason);
             on_disconnect(session, reason);
@@ -55,7 +39,11 @@ namespace uno
 
         SessionPtr find_session(int uid)
         {
-            return m_uid2session[uid];
+            auto it = m_uid2session.find(uid);
+            if (it == m_uid2session.end())
+                return nullptr;
+
+            return it->second;
         }
 
         size_t get_session_count()
@@ -117,6 +105,28 @@ namespace uno
             }
         }
 
+    private:
+
+        std::vector<SessionPtr> m_sessions;
+        std::unordered_map<int, SessionPtr> m_uid2session;
+        size_t m_iter = 0;
+
+        Ssmgr() = default;
+
+        void on_error(const SessionPtr& session, const std::exception& err)
+        {
+            std::cerr << err.what() << std::endl;
+        }
+
+        void on_disconnect(SessionPtr& session, const std::string& reason);
+
+        void on_c2s_msg(SessionPtr& session, const Router::arg_t& arg);
+
+        void on_attach(SessionPtr& session)
+        {
+            assert(!m_uid2session.contains(session->uid()));
+            m_uid2session[session->uid()] = session;
+        }
 
     };
 

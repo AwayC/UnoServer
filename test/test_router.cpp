@@ -12,8 +12,8 @@ static int test_count = 0;
 static int passed_count = 0;
 
 
-#define REGISTER_S2S(func) Router::router().register_s2s(#func, S2S::func)
-#define REGISTER_C2S(func) Router::router().register_c2s(#func, C2S::func)
+#define REGISTER_FUNC_S2S(func) Router::router().register_s2s(#func, S2S::func)
+#define REGISTER_FUNC_C2S(func) Router::router().register_c2s(#func, C2S::func)
 
 
 namespace S2S
@@ -186,14 +186,14 @@ namespace C2S
 
 #define TEST_FUNC_S2S(funcname_, ...) do { \
         ++test_count; \
-        REGISTER_S2S(funcname_); \
+        REGISTER_FUNC_S2S(funcname_); \
         Router::arg_t args_ = Router::arg_t({__VA_ARGS__}); \
         Router::router().call_s2s(#funcname_, args_); \
     } while (0);
 
 #define TEST_FUNC_C2S(funcname, ...) do { \
         test_count ++; \
-        REGISTER_C2S(funcname); \
+        REGISTER_FUNC_C2S(funcname); \
         auto session_ = Session::create(); \
         Router::arg_t args_ = Router::arg_t({__VA_ARGS__}); \
         Router::router().call_c2s(#funcname, session_, args_); \
