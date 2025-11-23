@@ -31,6 +31,8 @@ add_library(UnoServer
         src/game/stater.cpp
         src/game/room.h
         src/game/room.cpp
+
+        src/util/ssl.h
 )
 
 

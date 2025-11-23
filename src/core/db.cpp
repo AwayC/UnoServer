@@ -3,10 +3,19 @@
 //
 
 #include "db.h"
-
+#include "../util/ssl.h"
 
 namespace uno
 {
+    std::string trim_and_lower(const std::string& str)
+    {
+        std::string result = str;
+        result.erase(0, result.find_first_not_of(" \t\n\r"));
+        result.erase(result.find_last_not_of(" \t\n\r") + 1);
+        std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+        return result;
+    }
+
     DataBase* DataBase::create(Background* bg, std::string path)
     {
         DataBase* db = new DataBase(bg, path);
@@ -66,7 +75,7 @@ namespace uno
     void DataBase::users_has_username(const std::string& username,
                                         dbResultCb<bool> cb)
     {
-
+        std::string name = trim_and_lower(username);
         std::function<bool()> task = [this, username]()
         {
             return users_has_username(username);
@@ -77,10 +86,11 @@ namespace uno
 
     bool DataBase::users_has_username(const std::string& username)
     {
+        std::string name = trim_and_lower(username);
         try
         {
             SQLite::Statement query(m_db, R"(SELECT uid FROM users WHERE username = ?)");
-            query.bind(1, username);
+            query.bind(1, name);
             return query.executeStep();
         } catch (std::exception& e)
         {
@@ -126,10 +136,11 @@ namespace uno
 
     int DataBase::users_find_uid_by_name(const std::string& name)
     {
+        std::string username = trim_and_lower(name);
         try
         {
             SQLite::Statement query(m_db, R"(SELECT uid FROM users WHERE username = ?)");
-            query.bind(1, name);
+            query.bind(1, username);
             return query.executeStep();
         } catch (std::exception& e)
         {
@@ -156,13 +167,18 @@ namespace uno
                                     const std::string& email)
     {
         std::string salt = "salt";
-        //todo: hash password and create salt
+
+        std::string name = trim_and_lower(username);
+        assert(!name.empty());
+
+        salt = generate_salt();
+        std::string hashed = md5(salt + password);
 
         try
         {
             SQLite::Statement query(m_db, R"(INSERT INTO users (username, password, salt, email, register_time) VALUES (?, ?, ?, ?, current_timestamp))");
-            query.bind(1, username);
-            query.bind(2, password);
+            query.bind(1, name);
+            query.bind(2, hashed);
             query.bind(3, salt);
             query.bind(4, email);
             query.exec();
@@ -190,23 +206,27 @@ namespace uno
     bool DataBase::users_validate_password(const std::string& username,
                                             const std::string& password)
     {
-        // todo: hash password and compare with stored password
+        std::string name = trim_and_lower(username);
+        std::string hashed, salt;
+
         try
         {
             SQLite::Statement query(m_db, R"(SELECT password, salt FROM users WHERE username = ?)");
             query.bind(1, username);
             if (query.executeStep())
             {
-                std::string stored_password = query.getColumn(0).getString();
-                std::string stored_salt = query.getColumn(1).getString();
+                hashed = query.getColumn(0).getString();
+                salt = query.getColumn(1).getString();
                 // todo: hash password with stored salt and compare with stored_password
-                return password == stored_password;
             }
         } catch (std::exception& e)
         {
             std::cerr << "unexpected error when querying users: " << e.what() << std::endl;
             throw;
         }
+
+        std::string validate = md5(salt + password);
+        return validate == hashed;
     }
 
 
@@ -224,15 +244,16 @@ namespace uno
 
     lept_value DataBase::users_query_user(const std::string& username)
     {
+        std::string name = trim_and_lower(username);
         try
         {
             SQLite::Statement query(m_db, R"(SELECT uid, email, register_time, last_login_time, last_login_ip FROM users WHERE username = ?)");
-            query.bind(1, username);
+            query.bind(1, name);
             if (query.executeStep())
             {
                return {
                     {"uid", query.getColumn(0).getInt()},
-                    {"username", username},
+                    {"username", name},
                     {"email", query.getColumn(1).getString()},
                     {"register_time", query.getColumn(2).getInt()},
                     {"last_login_time", query.getColumn(3).getInt()},
@@ -476,11 +497,15 @@ namespace uno
 
     void DataBase::users_update_password(int uid, const std::string& password)
     {
+        std::string salt = generate_salt();
+        std::string hashed = md5(salt + password);
+
         try
         {
-            SQLite::Statement query(m_db, R"(UPDATE users SET password = ? WHERE uid = ?)");
-            query.bind(1, password);
-            query.bind(2, uid);
+            SQLite::Statement query(m_db, R"(UPDATE users SET password = ?, salt = ? WHERE uid = ?)");
+            query.bind(1, hashed);
+            query.bind(2, salt);
+            query.bind(3, uid);
             query.exec();
         } catch (std::exception& e)
         {

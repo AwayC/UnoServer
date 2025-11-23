@@ -146,8 +146,6 @@ namespace uno
         };
 
 
-
-
     private:
         std::vector<RoomPtr> m_rooms;
         int m_next_room_id;
@@ -155,6 +153,47 @@ namespace uno
         RoomSnapshot get_snapshot(RoomPtr, int uid);
         static PlayerSnapshot get_player_snapshot(RoomPtr, int uid);
 
+        template<typename... Args>
+        void send_event(RoomPtr room, int uid, int sender, std::string event, Args... args)
+        {
+            auto ss = Ssmgr::instance().find_session(uid);
+            if (ss)
+            {
+                ss->call("room_event_ntf", room->id, sender, event, args...);
+            } else
+            {
+                std::cerr << "send_event: ignore event " << event
+                    << ", uid: " << uid << " , room: " << room->id
+                    << std::endl;
+            }
+
+            if (event == "card_deal" && uid == sender)
+            {
+                // todo: 事件统计
+            }
+        }
+
+        template<typename... Args>
+        void broadcast_event(RoomPtr room, int sender, std::string event, Args... args)
+        {
+            for (auto& [uid, player] : room->players)
+            {
+                if (uid != sender)
+                    send_event(room, uid, sender, event, args...);
+            }
+
+            if (event != "card_deal")
+            {
+                try
+                {
+                    // room->stater.on_event(room, sender, event, args...);
+                } catch (const std::exception& e)
+                {
+                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
+                    std::cerr << e.what() << std::endl;
+                }
+            }
+        }
 
     };
 }
