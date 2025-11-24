@@ -8,6 +8,23 @@ namespace uno
 {
     using Stater = Room::GameStater;
 
+    constexpr std::vector<Stater::StatEvent> STAT_EVENT_DISPLAY_TABLE = {
+        {1, [](Stater::Stat& stat) { return stat.draw_by_report; }, 1, 4},
+        {2, [](Stater::Stat& stat) { return stat.draw_by_draw_card; }, 1, 10 },
+        {3, [](Stater::Stat& stat) { return stat.get_val(stat.draw_black_cards, card::FUNC_DRAW4); }, 5, 3},
+        {4, [](Stater::Stat& stat)
+            {
+                return stat.get_val(stat.play_black_cards, card::FUNC_DRAW4) +
+                    stat.get_val(stat.play_cards, card::FUNC_DRAW4);
+            }, 2, 4},
+        {5, [](Stater::Stat& stat) { return stat.report; }, 5, 3},
+        {6, [](Stater::Stat& stat) { return stat.be_reported; }, 5, 3},
+        {7, [](Stater::Stat& stat) { return stat.uno; }, 5, 3},
+        {8, [](Stater::Stat& stat) { return stat.sp_forbid_others_uno; }, 6, 2},
+        {9, [](Stater::Stat& stat) { return stat.sp_draw_others_eat_by_self; }, 6, 2},
+        {10, [](Stater::Stat& stat) { return stat.sp_draw_by_others_max; }, 5, 10}
+    };
+
     void Stater::check_uno_traceable(Room& room)
     {
         bool anyone_uno = false;
@@ -72,7 +89,7 @@ namespace uno
         return m_round_stat[uid];
     }
 
-    Stater::Stat Stater::get_display_stat()
+    std::vector<Stater::DisplayStat>& Stater::get_display_stat()
     {
         return m_display_stat;
     }
@@ -94,7 +111,7 @@ namespace uno
     {
         m_gaming = true;
         m_round_stat.clear();
-        m_display_stat = {};
+        m_display_stat.clear();
         m_draw_starter = -1;
         m_last_play_draw = -1;
         m_last_color_chger = -1;
@@ -129,6 +146,30 @@ namespace uno
         win_player->second.win = 1;
 
         // todo
+        for (size_t i = 0;i < STAT_EVENT_DISPLAY_TABLE.size();i ++)
+        {
+            auto& e = STAT_EVENT_DISPLAY_TABLE[i];
+            for (auto& [uid, stat]: m_round_stat)
+            {
+                int cnt = e.getField(stat);
+                if (cnt && cnt >= e.minDisplayCount)
+                {
+                    int score = (cnt - e.minDisplayCount) * e.score;
+                    m_display_stat.push_back({
+                        i, uid, cnt, score
+                    });
+                }
+            }
+        }
+
+        std::sort(m_display_stat.begin(), m_display_stat.end(), [](DisplayStat& a, DisplayStat& b)
+        {
+            return a.score > b.score;
+        });
+
+        // 保留前五
+        if (m_display_stat.size() > 5)
+            m_display_stat.resize(5);
     }
 
     void Stater::on_card_deal(Room& room, int uid, int rest_count, int deal_count,
