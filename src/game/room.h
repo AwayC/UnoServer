@@ -10,8 +10,6 @@
 #include "helper.h"
 #include "card.h"
 #include "constants.h"
-#include <vector>
-#include "stater.h"
 #include <unordered_map>
 
 namespace uno
@@ -56,6 +54,8 @@ namespace uno
             wait_player // 等待玩家思考
         };
 
+        class GameStater;
+
         struct Player
         {
             std::string nick;   // 昵称
@@ -96,7 +96,7 @@ namespace uno
         bool can_play_ahead = false; // 是否允许抢牌
         std::stack<card_t> history;
 
-        GameStater stater;
+        std::unique_ptr<GameStater> stater;
     };
 
     using RoomPtr = std::shared_ptr<Room>;
