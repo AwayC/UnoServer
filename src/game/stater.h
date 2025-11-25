@@ -1,11 +1,21 @@
+#pragma once
+
 #include "card.h"
 #include <vector>
-#include "room.h"
+#include <map>
+#include "constants.h"
+#include <memory>
+
+#include "leptjson.h"
 
 namespace uno
 {
-    class Room::GameStater
+    struct Room;
+    struct RoomSnapshot;
+
+    class GameStater
     {
+        using RoomPtr = std::shared_ptr<Room>;
     public:
         struct Stat
         {
@@ -57,24 +67,51 @@ namespace uno
             int score; // 积分
         };;
 
-        Stat get_stat(int uid);
+        lept_value get_stat(int uid);
         std::vector<DisplayStat>& get_display_stat();
         int get_winner_stealer();
 
-        void on_game_start(Room& room, int sender, RoomManager::RoomSnapshot* room_snapshot);
-        void on_player_left(Room& room, int uid, std::string reason);
 
-        void on_player_win(Room& room, int sender, int winner);
+        void on_game_start(RoomPtr room, int sender, RoomSnapshot* room_snapshot);
+        void on_player_left(RoomPtr room, int uid, std::string reason);
 
-        void on_card_deal(Room& room, int uid, int rest_count,
+        void on_player_win(RoomPtr room, int sender, int winner);
+
+        void on_card_deal(RoomPtr room, int uid, int rest_count,
             int deal_count,std::vector<card_t>& deal_cards,
             DEAL_CARD_REASON reason, int report_by, int cursor);
 
-        void on_card_play(Room& room, int uid, card_t c, bool need_uno,
+        void on_card_play(RoomPtr room, int uid, card_t c, bool need_uno,
             bool with_uno, int rest_count,
             std::vector<card_t>& cards, bool ahead);
 
+        template<typename... Args>
+        void on_event(std::string funcname, Args... args)
+        {
+#define APPLY(func) \
+    if (funcname == #func) \
+    { \
+        /* 检查当前传入的 Args... 是否能用来调用 func */ \
+        if constexpr (std::is_invocable_v<decltype(&GameStater::func), GameStater*, Args...>) \
+        { \
+            /* 只有参数匹配时，编译器才会生成这行代码 */ \
+            /* 使用 lambda 捕获 this 来调用成员函数 */ \
+            std::apply([this](auto&&... params){ \
+                this->func(std::forward<decltype(params)>(params)...); \
+            }, tup); \
+            return; \
+        } \
+    }
 
+            auto tup = std::make_tuple(args...);
+            APPLY(on_game_start)
+            APPLY(on_player_left)
+            APPLY(on_player_win)
+            APPLY(on_card_deal)
+            APPLY(on_card_play)
+
+#undef APPLY
+        }
 
     private:
 
@@ -92,7 +129,7 @@ namespace uno
         int m_last_play_card = -1; // 最后一次出牌的牌
         bool m_can_trace_winner_causer = false; // 是否可以开始追踪点炮的人
 
-        void check_uno_traceable(Room& room);
+        void check_uno_traceable(RoomPtr room);
         int check_winner_causer(int uid, card_t c, bool ahead); // return player
 
         struct StatEvent

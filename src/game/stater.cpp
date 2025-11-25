@@ -1,12 +1,13 @@
 //
 // Created by AWAY on 25-11-19.
 //
-#include "stater.h"
 #include "constants.h"
+#include "stater.h"
+#include "room.h"
 
 namespace uno
 {
-    using Stater = Room::GameStater;
+    using Stater = GameStater;
 
     constexpr std::vector<Stater::StatEvent> STAT_EVENT_DISPLAY_TABLE = {
         {1, [](Stater::Stat& stat) { return stat.draw_by_report; }, 1, 4},
@@ -25,10 +26,10 @@ namespace uno
         {10, [](Stater::Stat& stat) { return stat.sp_draw_by_others_max; }, 5, 10}
     };
 
-    void Stater::check_uno_traceable(Room& room)
+    void Stater::check_uno_traceable(RoomPtr room)
     {
         bool anyone_uno = false;
-        for (auto& [uid, player]: room.players)
+        for (auto& [uid, player]: room->players)
         {
             if (player.rest.size() == 1)
             {
@@ -84,9 +85,31 @@ namespace uno
         return ret;
     }
 
-    Stater::Stat Stater::get_stat(int uid)
+    lept_value Stater::get_stat(int uid)
     {
-        return m_round_stat[uid];
+        auto stat = m_round_stat[uid];
+
+#define KEY_VAL(key)  {#key, stat.key}
+        lept_value ret = {
+            KEY_VAL(game_count),
+            KEY_VAL(total_draw),
+            KEY_VAL(draw_by_sys),
+            KEY_VAL(draw_by_report),
+            KEY_VAL(total_play),
+            KEY_VAL(play_ahead),
+            KEY_VAL(report),
+            KEY_VAL(be_reported),
+            KEY_VAL(uno),
+            KEY_VAL(forgot_uno),
+            KEY_VAL(win),
+            KEY_VAL(sp_forbid_others_uno),
+            KEY_VAL(sp_cause_others_win),
+            KEY_VAL(sp_draw_others_eat_by_self),
+            KEY_VAL(sp_draw_by_others_max)
+        };
+#undef KEY_VAL
+
+        return ret;
     }
 
     std::vector<Stater::DisplayStat>& Stater::get_display_stat()
@@ -107,7 +130,7 @@ namespace uno
         return -1;
     }
 
-    void Stater::on_game_start(Room& room, int sender, RoomManager::RoomSnapshot* room_snapshot)
+    void Stater::on_game_start(RoomPtr room, int sender, RoomSnapshot* room_snapshot)
     {
         m_gaming = true;
         m_round_stat.clear();
@@ -120,7 +143,7 @@ namespace uno
         m_last_play_card = -1;
         m_can_trace_winner_causer = false;
 
-        for (auto& [uid, player]: room.players)
+        for (auto& [uid, player]: room->players)
         {
             Stat stat;
             m_round_stat[uid] = stat;
@@ -129,7 +152,7 @@ namespace uno
         }
     }
 
-    void Stater::on_player_left(Room& room, int uid, std::string reason)
+    void Stater::on_player_left(RoomPtr room, int uid, std::string reason)
     {
         if (m_gaming)
         {
@@ -137,7 +160,7 @@ namespace uno
         }
     }
 
-    void Stater::on_player_win(Room& room, int sender, int winner)
+    void Stater::on_player_win(RoomPtr room, int sender, int winner)
     {
         m_gaming = false;
 
@@ -172,7 +195,7 @@ namespace uno
             m_display_stat.resize(5);
     }
 
-    void Stater::on_card_deal(Room& room, int uid, int rest_count, int deal_count,
+    void Stater::on_card_deal(RoomPtr room, int uid, int rest_count, int deal_count,
         std::vector<card_t>& deal_cards, DEAL_CARD_REASON reason,
         int report_by, int cursor)
     {
@@ -197,46 +220,47 @@ namespace uno
                 {
                     last_play_draw_player->second.sp_forbid_others_uno += 1;
                 }
-
-                m_draw_starter = -1;
-                m_last_play_draw = -1;
-            } else if ( reason == DEAL_CARD_REASON::bad_uno)
-            {
-                player.draw_by_sys += deal_count;
-            } else if (reason == DEAL_CARD_REASON::report)
-            {
-                player.draw_by_report += deal_count;
-                player.be_reported += 1;
-
-                auto report_by_player = m_round_stat.find(report_by);
-                if (report_by_player != m_round_stat.end())
-                {
-                    report_by_player->second.report += 1;
-                }
-            } else
-            {
-                assert(reason == DEAL_CARD_REASON::normal || reason == DEAL_CARD_REASON::last_card);
             }
 
-            for (size_t i = 0;i < deal_cards.size();i ++)
-            {
-                int func = card::get_func(deal_cards[i]);
-                int color = card::get_color(deal_cards[i]);
 
-                if (color == card::COLOR_ALL)
-                {
-                    player.draw_black_cards[func] += 1;
-                } else
-                {
-                    player.draw_cards[func] += 1;
-                }
+            m_draw_starter = -1;
+            m_last_play_draw = -1;
+        } else if (reason == DEAL_CARD_REASON::bad_uno)
+        {
+            player.draw_by_sys += deal_count;
+        } else if (reason == DEAL_CARD_REASON::report)
+        {
+            player.draw_by_report += deal_count;
+            player.be_reported += 1;
+
+            auto report_by_player = m_round_stat.find(report_by);
+            if (report_by_player != m_round_stat.end())
+            {
+                report_by_player->second.report += 1;
+            }
+        } else
+        {
+            assert(reason == DEAL_CARD_REASON::normal || reason == DEAL_CARD_REASON::last_card);
+        }
+
+        for (size_t i = 0;i < deal_cards.size();i ++)
+        {
+            int func = card::get_func(deal_cards[i]);
+            int color = card::get_color(deal_cards[i]);
+
+            if (color == card::COLOR_ALL)
+            {
+                player.draw_black_cards[func] += 1;
+            } else
+            {
+                player.draw_cards[func] += 1;
             }
         }
 
         check_uno_traceable(room);
     }
 
-    void Stater::on_card_play(Room& room, int uid, card_t c, bool need_uno,
+    void Stater::on_card_play(RoomPtr room, int uid, card_t c, bool need_uno,
             bool with_uno, int rest_count,
             std::vector<card_t>& cards, bool ahead)
     {
@@ -299,7 +323,7 @@ namespace uno
             if (color == card::COLOR_ALL)
             {
                 m_last_color_chger = uid;
-                m_last_color = room.last_chg_color;
+                m_last_color = room->last_chg_color;
             }
             if (!ahead)
             {
