@@ -195,15 +195,15 @@ namespace uno
             m_display_stat.resize(5);
     }
 
-    void Stater::on_card_deal(RoomPtr room, int uid, int rest_count, int deal_count,
-        std::vector<card_t>& deal_cards, DEAL_CARD_REASON reason,
+    void Stater::on_card_deal(RoomPtr room, int uid, size_t rest_count, size_t deal_count,
+        std::vector<card_t>& deal_cards, deal_card_reason reason,
         int report_by, int cursor)
     {
         auto it = m_round_stat.find(uid);
         assert(it != m_round_stat.end());
 
         auto& player = it->second;
-        if (reason == DEAL_CARD_REASON::draw)
+        if (reason == deal_card_reason::draw)
         {
             player.draw_by_draw_card += deal_count;
             player.sp_draw_by_others_max = std::max(player.sp_draw_by_others_max, deal_count);
@@ -225,10 +225,10 @@ namespace uno
 
             m_draw_starter = -1;
             m_last_play_draw = -1;
-        } else if (reason == DEAL_CARD_REASON::bad_uno)
+        } else if (reason == deal_card_reason::bad_uno)
         {
             player.draw_by_sys += deal_count;
-        } else if (reason == DEAL_CARD_REASON::report)
+        } else if (reason == deal_card_reason::report)
         {
             player.draw_by_report += deal_count;
             player.be_reported += 1;
@@ -240,7 +240,7 @@ namespace uno
             }
         } else
         {
-            assert(reason == DEAL_CARD_REASON::normal || reason == DEAL_CARD_REASON::last_card);
+            assert(reason == deal_card_reason::normal || reason == deal_card_reason::last_card);
         }
 
         for (size_t i = 0;i < deal_cards.size();i ++)

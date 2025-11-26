@@ -1,6 +1,7 @@
 //
 // Created by AWAY on 25-11-19.
 //
+#pragma once
 
 #include <assert.h>
 #include "../core/router.h"
@@ -128,79 +129,6 @@ namespace uno
 
         void update(RoomPtr room, time_point now);
 
-    private:
-        template<typename... Args>
-        void send_event(RoomPtr room, int uid, int sender, std::string event, Args... args)
-        {
-            auto ss = Ssmgr::instance().find_session(uid);
-            if (ss)
-            {
-                ss->call("room_event_ntf", room->id, sender, event, args...);
-            } else
-            {
-                std::cerr << "send_event: ignore event " << event
-                    << ", uid: " << uid << " , room: " << room->id
-                    << std::endl;
-            }
-
-            if (event == "card_deal" && uid == sender)
-            {
-                try
-                {
-                    room->stater.on_event(room, sender, event, args...);
-                } catch (const std::exception& e)
-                {
-                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
-                    std::cerr << e.what() << std::endl;
-                }
-            }
-        }
-
-        template<typename... Args>
-        void broadcast_event(RoomPtr room, int sender, std::string event, Args... args)
-        {
-            for (auto& [uid, player] : room->players)
-            {
-                if (uid != sender)
-                    send_event(room, uid, sender, event, args...);
-            }
-
-            if (event != "card_deal")
-            {
-                try
-                {
-                    // room->stater.on_event(room, sender, event, args...);
-                } catch (const std::exception& e)
-                {
-                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
-                    std::cerr << e.what() << std::endl;
-                }
-            }
-        }
-
-        RoomSnapshot get_snapshot(RoomPtr, int uid);
-        static PlayerSnapshot get_player_snapshot(RoomPtr, int uid);
-
-        void game_start(RoomPtr room);
-
-        void game_over(RoomPtr room, int uid);
-
-        void game_dismiss(RoomPtr room);
-
-        void game_player_leave(RoomPtr room, int uid, DEAL_CARD_REASON reason);
-
-        void game_cursor_move(RoomPtr room, int base, int step);
-
-        void game_card_heap_deal(RoomPtr room);
-
-        void game_player_card_play(RoomPtr room, int uid, bool with_uno, card_t chg_color);
-
-        void game_player_deal_card(RoomPtr room, int uid, int count, DEAL_CARD_REASON reason, int req_by);
-
-        void game_player_report_no_uno(RoomPtr room, int uid);
-
-        void game_can_play_card(RoomPtr room, card_t c, bool ahead);
-
         /**
          * c2s funcs
          */
@@ -228,8 +156,84 @@ namespace uno
 
         void get_room_list_req(SessionPtr ss);
 
+    private:
+        template<typename... Args>
+        void send_event(RoomPtr room, int uid, int sender, const std::string& event, Args&&... args)
+        {
+            auto ss = Ssmgr::instance().find_session(uid);
+            if (ss)
+            {
+                ss->call("room_event_ntf", room->id, sender, event, args...);
+            } else
+            {
+                std::cerr << "send_event: ignore event " << event
+                    << ", uid: " << uid << " , room: " << room->id
+                    << std::endl;
+            }
 
-        std::vector<RoomPtr> m_rooms;
+            if (event == "card_deal" && uid == sender)
+            {
+                try
+                {
+                    room->stater.on_event(room, sender, event, std::forward<Args>(args)...);
+                } catch (const std::exception& e)
+                {
+                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
+                    std::cerr << e.what() << std::endl;
+                }
+            }
+        }
+
+        template<typename... Args>
+        void broadcast_event(RoomPtr room, int sender, const std::string& event, Args&&... args)
+        {
+            for (auto& [uid, player] : room->players)
+            {
+                if (uid != sender)
+                    send_event(room, uid, sender, event, args...);
+            }
+
+            if (event != "card_deal")
+            {
+                try
+                {
+                    room->stater.on_event(room, sender, event, std::forward<Args>(args)...);
+                } catch (const std::exception& e)
+                {
+                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
+                    std::cerr << e.what() << std::endl;
+                }
+            }
+        }
+
+        RoomSnapshot get_snapshot(RoomPtr, int uid);
+        static PlayerSnapshot get_player_snapshot(RoomPtr, int uid);
+
+        void game_start(RoomPtr room);
+
+        void game_over(RoomPtr room, int uid);
+
+        void game_dismiss(RoomPtr room);
+
+        void game_player_leave(RoomPtr room, int uid, deal_card_reason reason);
+
+        int game_cursor_move(RoomPtr room, int base, int step);
+
+        card_t game_card_heap_deal(RoomPtr room);
+
+        bool game_player_card_play(RoomPtr room, int uid, card_t c, bool with_uno, int chg_color);
+
+        bool game_player_deal_card(RoomPtr room, int uid, int count, deal_card_reason reason, int req_by);
+
+        bool game_player_report_no_uno(RoomPtr room, int uid);
+
+        bool game_can_play_card(RoomPtr room, card_t c, bool ahead);
+
+
+
+        using RoomMap = std::unordered_map<int, RoomPtr>;
+
+        RoomMap m_rooms;
         size_t m_next_room_id;
 
         size_t generateIDBaseTime()
@@ -246,6 +250,7 @@ namespace uno
         {
             m_next_room_id = generateIDBaseTime();
         }
+
 
     };
 
