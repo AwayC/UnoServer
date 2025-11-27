@@ -27,10 +27,10 @@ namespace uno {
         api_email_invalid = -1112,
 
         api_db_error = -1200,
-        api_connect_reenter = -1201,
+        api_cannot_reenter = -1201,
         api_room_not_found = -1202,
         api_room_is_in_game = -1203,
-        api_is_full = -1204,
+        api_room_is_full = -1204,
         api_room_invalid_title = -1205,
         api_room_invalid_param = -1206,
         api_room_not_ready = -1207,

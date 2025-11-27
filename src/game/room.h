@@ -141,7 +141,7 @@ namespace uno
 
         void get_ready_req(SessionPtr ss, int room_id);
 
-        void get_shuffle_room_seats_req(SessionPtr ss, int room_id);
+        void shuffle_room_seats_req(SessionPtr ss, int room_id);
 
         void room_use_voice_req(SessionPtr ss, int room_id, bool voice_id);
 
@@ -207,8 +207,8 @@ namespace uno
             }
         }
 
-        RoomSnapshot get_snapshot(RoomPtr, int uid);
-        static PlayerSnapshot get_player_snapshot(RoomPtr, int uid);
+        static lept_value get_snapshot(RoomPtr room, int uid);
+        static lept_value get_player_snapshot(RoomPtr room, int uid);
 
         void game_start(RoomPtr room);
 
@@ -237,9 +237,9 @@ namespace uno
         using RoomMap = std::unordered_map<int, RoomPtr>;
 
         RoomMap m_rooms;
-        size_t m_next_room_id;
+        int m_next_room_id;
 
-        size_t generateIDBaseTime()
+        int generateIDBaseTime()
         {
             auto now = ROOM_NOW;
             auto duration = now.time_since_epoch();
