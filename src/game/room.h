@@ -45,30 +45,31 @@ namespace uno
             std::vector<card_t> rest;   // 剩余手牌 （state == 1)
             bool ready = false;     // 是否就绪 （state == 0)
             bool offline = false;   // 是否离线
-            time_point m_last_save_time = time_point::min(); // 最后保存时间
+            time_point offline_time;    // 上次离线时间
+            time_point m_last_save_time; // 最后保存时间
         };
 
         using PlayerMap = std::unordered_map<int, Player>;
 
-        int id = 0;
+        int id;
         State state = State::idle;
         std::string title;  // 房间标题
-        int owner = 0;    // 所有人
-        int max_players = 5;    // 房间大小
-        int curr_players = 1;    // 当前玩家数
+        int owner;    // 所有人
+        int max_players;    // 房间大小
+        int curr_players;    // 当前玩家数
 
         PlayerMap players; // 玩家列表
 
         std::vector<int> seq; //seq: [] 桌面顺序
-        int last_win = 0;   // 最后赢家
+        int last_win = -1;   // 最后赢家
         int last_direction = -1;    // 上把的方向
         time_point last_update_seat_time = time_point::min(); // 上把重排座位的时间
 
         GameState game_state = GameState::idle; // 游戏状态 (state == 1)
         int deal_turn = 0; // 发牌轮数 （state == 1）
         int cursor = 0; // 当前玩家 （state == 1）
-        int direction = 1; // 方向 （state == 1）
-        int dealer = 1000;  // 庄家UID (state == 1)
+        int direction = 0; // 方向 （state == 1）
+        int dealer = 0;  // 庄家UID (state == 1)
         int timer = 0; // 当前倒计时 （state == 1）
         std::vector<card_t> heap; // heep: [] 牌堆
         card_t last = 0;  // 最后一张牌
@@ -132,7 +133,7 @@ namespace uno
         /**
          * c2s funcs
          */
-        void create_room_req(SessionPtr ss, std::string title, int player_count);
+        void create_room_req(SessionPtr ss, const std::string& title, int player_count);
 
         void enter_room_req(SessionPtr ss, int room_id, bool re_enter);
 
@@ -215,7 +216,7 @@ namespace uno
 
         void game_dismiss(RoomPtr room);
 
-        void game_player_leave(RoomPtr room, int uid, deal_card_reason reason);
+        void game_player_leave(RoomPtr room, int uid, player_left_reason reason);
 
         int game_cursor_move(RoomPtr room, int base, int step);
 
@@ -228,6 +229,8 @@ namespace uno
         bool game_player_report_no_uno(RoomPtr room, int uid);
 
         bool game_can_play_card(RoomPtr room, card_t c, bool ahead);
+
+        void game_update(RoomPtr room, time_point now);
 
 
 

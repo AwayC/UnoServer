@@ -77,8 +77,8 @@ namespace uno
 
         void on_player_win(RoomPtr room, int sender, int winner);
 
-        void on_card_deal(RoomPtr room, int uid, int rest_count,
-            int deal_count,std::vector<card_t>& deal_cards,
+        void on_card_deal(RoomPtr room, int uid, size_t rest_count,
+            size_t deal_count,std::vector<card_t>& deal_cards,
             deal_card_reason reason, int report_by, int cursor);
 
         void on_card_play(RoomPtr room, int uid, card_t c, bool need_uno,

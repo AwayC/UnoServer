@@ -20,8 +20,8 @@ constexpr int PUNISH_FOR_BAD_UNO = 2; // 乱喊UNO罚两张
 constexpr int PUNISH_FOR_LAST_FUNC_CARD = 2; //以功能牌结尾，罚两张
 constexpr int PUNISH_FOR_NO_UNO = 2; // 没有喊UNO罚牌
 
-constexpr int PLAYER_AUTO_TICK_OFFLINE_TIME = 1 * 60 * 1000; // 超过1分钟自动踢出房间
-constexpr int PLAYER_AUTO_PLAY_OFFLINE_TIME = 1 * 60 * 1000; // 超过1分钟自动托管
+constexpr int PLAYER_AUTO_TICK_OFFLINE_TIME = 1; // 超过1分钟自动踢出房间
+constexpr int PLAYER_AUTO_PLAY_OFFLINE_TIME = 1; // 超过1分钟自动托管
 constexpr int PLAYER_AUTO_PLAY_THINKING_TIME = TIMER_PLAYER_THINKING * 0.85; // 自动托管时减少思考时间
 
 constexpr int OWNER_UPDATE_SEAT_INTERVAL = 10 * 1000; // 允许房主重排座位的倒计时
@@ -249,7 +249,7 @@ namespace uno
         broadcast_event(room, -1, "game_dismiss");
     }
 
-    void RoomManager::game_player_leave(RoomPtr room, int uid, deal_card_reason reason)
+    void RoomManager::game_player_leave(RoomPtr room, int uid, player_left_reason reason)
     {
         auto it = room->players.find(uid);
         assert(it != room->players.end());
@@ -320,6 +320,16 @@ namespace uno
         if (room->last_win == uid)
         {
             room->last_win = -1;
+        }
+
+        // 通知玩家离开
+        broadcast_event(room, uid, "player_left", reason);
+
+        // 如果只有一人，则直接获胜
+        if (room->state == Room::State::playing && room->curr_players == 1)
+        {
+            game_over(room, room->seq[0]);
+            return ;
         }
 
         // 通知所有人刷新状态
@@ -695,5 +705,305 @@ namespace uno
         }
     }
 
+    void RoomManager::game_update(RoomPtr room, time_point now)
+    {
+        if (room->state == Room::State::idle)
+        {
+            // 如果玩家离线时间超过1分钟，则直接从房间踢出
+            for (auto& [uid, player] : room->players)
+            {
+                if (player.offline && (now - player.offline_time >= std::chrono::minutes(PLAYER_AUTO_TICK_OFFLINE_TIME)))
+                {
+                    std::cout << "game_update player kick cause timeout, now " << now << ", offline_time " <<  player.offline_time << std::endl;
+                    game_player_leave(room, uid, player_left_reason::offline_kick);
+                }
 
+                return ;
+            }
+        }
+
+        assert(room->state == Room::State::playing);
+
+        // 状态机
+        if (room->game_state == Room::GameState::dealing)
+        {
+            // 起始牌发牌逻辑
+            room->timer == room->timer - 1;
+            if (room->timer <= 0)
+            {
+                assert(room->cursor < room->seq.size());
+                int uid = room->seq[room->cursor];
+                auto it = room->players.find(uid);
+                assert(it != room->players.end());
+                auto& player = it->second;
+
+                // 发牌
+                card_t c = game_card_heap_deal(room);
+                assert(c);
+                player.rest.push_back(c);
+
+                // 移动到下一玩家
+                game_cursor_move(room, -1, room->direction);
+
+                // 发给玩家
+                std::vector<card_t> tmp = {c};
+                send_event(room, uid, uid, "card_deal", player.rest.size(), 1,
+                    tmp, deal_card_reason::normal, -1, room->cursor);
+
+                // 发送广播消息
+                broadcast_event(room, uid, "card_deal", player.rest.size(), 1, std::vector<card_t>(), deal_card_reason::normal, -1, room->cursor);
+
+                // 更新状态
+                room->deal_turn = room->deal_turn + 1;
+                if (room->deal_turn >= room->curr_players * PLAYER_START_CARD_COUNT)
+                {
+                    assert(room->deal_turn == room->curr_players * PLAYER_START_CARD_COUNT);
+                    assert(room->seq[room->cursor] == room->dealer);
+
+                    // 如果玩家手牌都发完了， 则轮到给庄家发牌
+                    room->game_state == Room::GameState::dealing_dealer;
+                    room->deal_turn = 0;
+                }
+
+                room->timer = TIMER_DEALING_INTERVAL;
+            }
+        } else if (room->game_state == Room::GameState::dealing_dealer)
+        {
+            // 庄家发牌逻辑
+            room->timer = room->timer - 1;
+            if (room->timer <= 0)
+            {
+                assert(room->seq.size() > room->cursor);
+                int uid = room->seq[room->cursor];
+                assert(uid == room->dealer);
+                auto it = room->players.find(uid);
+                assert(it != room->players.end());
+                auto& player = it->second;
+
+                // 发牌
+                card_t c = game_card_heap_deal(room);
+                assert(c >= 0);
+                player.rest.push_back(c);
+
+                // 发给玩家
+                std::vector<card_t> tmp = {c};
+                send_event(room, uid, uid, "card_deal", player.rest.size(), 1,
+                    tmp, deal_card_reason::normal, -1, room->cursor);
+
+                // 发送广播消息
+                broadcast_event(room, uid, "card_deal", player.rest.size(), 1, std::vector<card_t>(), deal_card_reason::normal, -1, room->cursor);
+
+                // 更新状态
+                room->deal_turn = room->deal_turn + 1;
+                if (room->deal_turn >= DEALER_START_CARD_EXT_COUNT)
+                {
+                    assert(room->deal_turn == DEALER_START_CARD_EXT_COUNT);
+
+                    // 庄家额外的牌都发完了，进入抽取首张牌的状态
+                    room->game_state = Room::GameState::select_first_card;
+                    room->deal_turn = 0;
+                    room->timer = TIMER_SELECT_FIRST_CARD_INTERVAL;
+                    room->can_play_ahead = true; // 初始牌可以抢
+                } else
+                {
+                    room->timer = TIMER_DEALING_INTERVAL;
+                }
+            }
+        } else if (room->game_state == Room::GameState::select_first_card)
+        {
+            // 选取首张牌逻辑
+            room->timer = room->timer - 1;
+            if (room->timer <= 0)
+            {
+                // 从牌堆选一张牌
+                card_t c;
+                int limit = 100;
+                while (true)
+                {
+                    c = game_card_heap_deal(room);
+                    assert(c >= 0);
+                    // 如果抽到非数字牌则丢回牌堆
+                    if (limit >= 0 && card::is_func_card(c) && room->heap.size() > 1)
+                    {
+                        room->heap.push_back(c);
+
+                        // 交换最后一张牌和任意一张牌然后重新抽
+                        int idx = random() % room->heap.size();
+                        card_t tmp = room->heap[idx];
+                        room->heap[idx] = room->heap[room->heap.size() - 1];
+                        room->heap[room->heap.size() - 1] = tmp;
+
+                        // 保护计数器
+                        limit --;
+                        continue;
+                    }
+                    break;
+                }
+
+                // 广播
+                broadcast_event(room, -1, "first_card", c);
+
+                // 更新状态
+                assert(room->seq[room->cursor] == room->dealer);  // 此时总是停留在庄家上
+                room->game_state = Room::GameState::wait_player;
+                room->last = c;
+                room->last_chg_color = 0;
+                room->history.push_back(c);
+                room->timer = TIMER_PLAYER_THINKING;
+
+                // 广播
+                broadcast_event(room, -1, "thinking", room->seq[room->cursor],
+                    room->timer, room->last, room->last_chg_color, room->direction,
+                    room->draw, room->last_can_report, room->can_play_ahead);
+            }
+        } else if (room->game_state == Room::GameState::wait_player)
+        {
+            assert(room->seq.size() > room->cursor);
+            int uid = room->seq[room->cursor];
+            auto it = room->players.find(uid);
+            assert(it != room->players.end());
+            auto& player = it->second;
+
+            // 更新计数器
+            room->timer = room->timer - 1;
+
+            // 如果倒计时终止或者玩家长时间不在线，则激活托管
+            int threshold = 0;
+            if (player.offline && (now - player.offline_time >= std::chrono::minutes(PLAYER_AUTO_PLAY_OFFLINE_TIME)))
+            {
+                threshold = TIMER_PLAYER_THINKING;
+            }
+
+            // 玩家托管逻辑
+            if (room->timer <= threshold)
+            {
+                std::cout << "game_update: player timeout, uid " << uid << ", room " << room->id << std::endl;
+
+                // 检查玩家的手牌，选取可以打的手牌
+                std::vector<card_t> can_play_cards;
+                int red_cards = 0;
+                int yellow_cards = 0;
+                int green_cards = 0;
+                int blue_cards = 0;
+                for (card_t c : player.rest)
+                {
+                    if (game_can_play_card(room, c, false))
+                        can_play_cards.push_back(c);
+                    int color = card::get_color(c);
+                    if (color = card::COLOR_RED)
+                        red_cards ++;
+                    else if (color == card::COLOR_YELLOW)
+                        yellow_cards ++;
+                    else if (color == card::COLOR_GREEN)
+                        green_cards ++;
+                    else if (color == card::COLOR_BLUE)
+                        blue_cards ++;
+                }
+
+                // 如果没有可以打的牌，则发牌
+                if (can_play_cards.empty())
+                    game_player_deal_card(room, uid, 1, deal_card_reason::normal, -1);
+                else
+                {
+                    // 否则，随机选取一张牌出来
+                    card_t select = helper::random_select(can_play_cards);
+                    int select_color = card::COLOR_ALL;
+
+                    // 如果是王牌或者变色牌
+                    if (card::get_color(select) == card::COLOR_ALL)
+                    {
+                        // 贪婪：选择当前颜色最多的牌
+                        if (blue_cards != 0)
+                            select_color = card::COLOR_BLUE;
+                        else if (green_cards > blue_cards)
+                            select_color = card::COLOR_GREEN;
+                        else if (yellow_cards > green_cards)
+                            select_color = card::COLOR_YELLOW;
+                        else if (red_cards > yellow_cards)
+                            select_color = card::COLOR_RED;
+
+                        // 如果还没有选出来，则随机一个颜色
+                        if (select_color == card::COLOR_ALL)
+                        {
+                            select_color = helper::random_select(
+                                std::vector<int>({card::COLOR_BLUE, card::COLOR_GREEN, card::COLOR_YELLOW, card::COLOR_RED})
+                                );
+                        }
+                    }
+
+                    // 检查是否需UNO，给1/2几率没有UNO
+                    bool with_uno = false;
+                    if (player.rest.size() == 2 && rand() % 2)
+                        with_uno = true;
+
+                    // 打选中的牌
+                    card_t ret = game_player_card_play(room, uid, select, with_uno, select_color);
+                    assert(ret >= 0);
+                }
+            }
+        }
+    }
+
+    void RoomManager::create_room_req(SessionPtr ss, const std::string& title, int player_count)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查参数
+        if (title.length() < 3 || title.length() > 10)
+        {
+            ss->call("create_room_rsp", ErrCode::api_room_invalid_title, nullptr);
+            return;
+        }
+        if (player_count < 2 || player_count > 20)
+        {
+          ss->call("create_room_rsp", ErrCode::api_room_invalid_title, nullptr);
+        }
+
+        // 检查状态
+        if (ss->state() != Session::State::logged)
+        {
+            std::cerr << "create_room_req: bad state, " << (int)ss->state() << std::endl;
+            ss->call("create_room_rsp", ErrCode::api_invalid_call, nullptr);
+            return ;
+        }
+        if (data.contains("room_id") && data.at("room_id").is<std::string>())
+        {
+            std::cerr << "create_room_req: already in another room " << data.at("room_id").get_string() << std::endl;
+            ss->call("create_room_rsp", ErrCode::api_invalid_call, nullptr);
+            return;
+        }
+
+        // 生成房间ID
+        int id = (m_next_room_id++);
+        while (m_rooms.contains(id))
+            id = (m_next_room_id++);
+
+        // 创建房间
+        m_rooms[id] = std::make_shared<Room>(Room{
+            .id = id,
+            .owner = uid,
+            .max_players = player_count,
+            .curr_players = 1,
+            .title = title,
+            .seq = {uid},
+        });
+        m_rooms[id]->players[uid] =
+            Room::Player{
+                .nick = ss->nick(),
+                .email = ss->email(),
+                .ready = false,
+                .offline = false,
+                .offline_time = time_point::min(),
+            };
+
+        // 设置玩家状态
+        data["room_id"] = id;
+        ss->set_dirty();
+        ss->set_state(Session::State::gaming);
+
+        // ss->call("create_room_rsp", ErrCode::ok, get_snapshot(m_rooms[uid]))
+        // todo
+
+    }
 }

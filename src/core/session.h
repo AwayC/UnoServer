@@ -89,6 +89,11 @@ namespace uno
             return m_data;
         }
 
+        lept_value& data()
+        {
+            return m_data;
+        }
+
         bool dirty() const
         {
             return m_dirty;

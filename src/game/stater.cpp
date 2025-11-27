@@ -206,7 +206,7 @@ namespace uno
         if (reason == deal_card_reason::draw)
         {
             player.draw_by_draw_card += deal_count;
-            player.sp_draw_by_others_max = std::max(player.sp_draw_by_others_max, deal_count);
+            player.sp_draw_by_others_max = std::max(player.sp_draw_by_others_max, (int)deal_count);
 
             if (m_draw_starter == uid)
             {
