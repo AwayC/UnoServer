@@ -46,7 +46,7 @@ namespace uno
             bool ready = false;     // 是否就绪 （state == 0)
             bool offline = false;   // 是否离线
             time_point offline_time;    // 上次离线时间
-            time_point m_last_save_time; // 最后保存时间
+            time_point last_use_voice_time; // 上一次使用音效的时间
         };
 
         using PlayerMap = std::unordered_map<int, Player>;
@@ -128,7 +128,7 @@ namespace uno
             return ins;
         }
 
-        void update(RoomPtr room, time_point now);
+        void update(time_point now);
 
         /**
          * c2s funcs
@@ -143,9 +143,9 @@ namespace uno
 
         void shuffle_room_seats_req(SessionPtr ss, int room_id);
 
-        void room_use_voice_req(SessionPtr ss, int room_id, bool voice_id);
+        void room_use_voice_req(SessionPtr ss, int room_id, int voice_id);
 
-        void room_kickout_player_req(SessionPtr ss, int room_id, bool be_kicked);
+        void room_kickout_player_req(SessionPtr ss, int room_id, int be_kicked);
 
         void start_game_req(SessionPtr ss, int room_id);
 

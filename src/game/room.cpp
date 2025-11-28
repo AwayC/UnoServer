@@ -1267,7 +1267,7 @@ namespace uno
         assert(player_it != room->players.end());
         if (room->owner != uid)
         {
-            ss->call("shuffle_room_seats_rsp", (int)ErrCode::api_room_not_owner);l
+            ss->call("shuffle_room_seats_rsp", (int)ErrCode::api_room_not_owner);
             return ;
         }
 
@@ -1296,6 +1296,374 @@ namespace uno
         ss->call("shuffle_room_seats_rsp", (int)ErrCode::ok);
     }
 
+    void RoomManager::room_use_voice_req(SessionPtr ss, int room_id, int voice_id)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
 
+        // 检查状态
+        if (ss->state() != Session::State::gaming)
+        {
+            std::cerr << "room_use_voice_rsp: bad state, " << (int)ss->state() << std::endl;
+            ss->call("room_use_voice_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("room_use_voice_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状况
+        auto room_it = m_rooms.find(room_id);
+        if (room_it != m_rooms.end())
+        {
+            std::cerr << "room_use_voice_rsp: room not found, room_id: " << room_id << std::endl;
+            ss->call("room_use_voice_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+
+        // 获取玩家对象
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+        auto& player = player_it->second;
+
+        auto now = ROOM_NOW;
+        if (now - player.last_use_voice_time < std::chrono::microseconds(PLAYER_USE_VOICE_INTERVAL))
+        {
+            ss->call("room_use_voice_rsp", (int)ErrCode::api_room_use_voice_cooldown);
+            return ;
+        }
+
+        // 设置使用时间
+        player.last_use_voice_time = now;
+
+        // 发送广播
+        broadcast_event(room, -1, "use_voice", uid, voice_id);
+
+        // 回包
+        ss->call("room_use_voice_rsp", (int)ErrCode::ok);
+    }
+
+    void RoomManager::room_kickout_player_req(SessionPtr ss, int room_id, int be_kicked)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查状态
+        if (ss->state() != Session::State::gaming)
+        {
+            std::cerr << "room_kickout_player_rsp: bad state, " << (int)ss->state() << std::endl;
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状态
+        auto room_it = m_rooms.find(room_id);
+        if (room_it == m_rooms.end())
+        {
+            std::cerr << "room_kickout_player_rsp: room not found, room_id: " << room_id << std::endl;
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+        if (room->state != Room::State::idle)
+        {
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 检查是否是房主
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+        auto& player = player_it->second;
+        if (room->owner != uid)
+        {
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_room_not_owner);
+            return ;
+        }
+
+        // 检查被踢玩家是否存在
+        auto be_kicked_player_it = room->players.find(be_kicked);
+        if (be_kicked_player_it == room->players.end())
+        {
+            ss->call("room_kickout_player_rsp", (int)ErrCode::api_room_player_not_found);
+            return ;
+        }
+
+        // 发起踢人
+        std::cout << "room_kickout_player_req: player " << be_kicked << " was kicked by owner " << uid << std::endl;
+        send_event(room, be_kicked, uid, "be_kicked");
+
+        // 清空玩家状态
+        auto be_kicked_ss = SSMGR.find_session(be_kicked);
+        if (be_kicked_ss)
+        {
+            auto be_kicked_data = be_kicked_ss->data();
+            if (be_kicked_data.is<lept_value::object_t>())
+            {
+                be_kicked_data["room_id"] = -1;
+                be_kicked_ss->set_dirty();
+                be_kicked_ss->set_state(Session::State::logged);
+            }
+        }
+
+        // 房间内逻辑
+        game_player_leave(room, be_kicked, player_left_reason::kicked_by_owner);
+
+        // 回包
+        ss->call("room_kickout_player_rsp", (int)ErrCode::ok);
+    }
+
+    void RoomManager::start_game_req(SessionPtr ss, int room_id)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查状态
+        if (ss->state() != Session::State::gaming)
+        {
+            std::cerr << "start_game_req: bad state, " << (int)ss->state() << std::endl;
+            ss->call("start_game_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("start_game_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状态
+        auto room_it = m_rooms.find(room_id);
+        if (room_it == m_rooms.end())
+        {
+            std::cerr << "start_game_req: room not found, room_id: " << room_id << std::endl;
+            ss->call("start_game_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+        if (room->state != Room::State::idle)
+        {
+            ss->call("start_game_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取玩家对象
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+        auto& player = player_it->second;
+
+        // 检查是否是房主
+        if (room->owner != uid)
+        {
+            std::cerr << "start_game_req: not owner, room_id: " << room_id << ", uid: " << uid << std::endl;
+            ss->call("start_game_rsp", (int)ErrCode::api_room_not_owner);
+            return ;
+        }
+
+        // 检查玩家数
+        if (room->players.size() < 2)
+        {
+            ss->call("start_game_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 检查是否所有玩家就绪（除房主外）
+        for (auto& [u, player]: room->players)
+        {
+            if (u != uid && !player.ready)
+            {
+                ss->call("start_game_rsp", (int)ErrCode::api_room_not_ready);
+                return ;
+            }
+        }
+
+        // 开局，初始话数据
+        game_start(room);
+
+        ss->call("start_game_rsp", (int)ErrCode::ok);
+        broadcast_event(room, -1, "game_start", get_snapshot(room, -1));
+    }
+
+    void RoomManager::game_play_card_req(SessionPtr ss, int room_id, card_t c, bool with_uno, int chg_color)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查状态
+        if (ss->state() != Session::State::gaming))
+        {
+            std::cerr << "game_play_card_req: bad state, " << (int)ss->state() << std::endl;
+            ss->call("game_play_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("game_play_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状态
+        auto room_it = m_rooms.find(room_id);
+        if (room_it == m_rooms.end())
+        {
+            std::cerr << "game_play_card_req: room not found, room_id: " << room_id << std::endl;
+            ss->call("game_play_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+        if (room->state != Room::State::playing)
+        {
+            ss->call("game_play_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取玩家对象
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+
+        if (!game_player_card_play(room, uid, c, with_uno, chg_color))
+        {
+            ss->call("game_play_card_rsp", (int)ErrCode::api_game_cannot_play_card);
+            return ;
+        }
+
+        ss->call("game_play_card_rsp", (int)ErrCode::ok);
+    }
+
+    void RoomManager::game_deal_card_req(SessionPtr ss, int room_id)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查状态
+        if (ss->state() != Session::State::gaming) {
+            std::cerr << "game_play_card_req: bad state, " << (int)ss->state() << std::endl;
+            ss->call("game_deal_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("game_deal_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状态
+        auto room_it = m_rooms.find(room_id);
+        if (room_it == m_rooms.end())
+        {
+            std::cerr << "game_deal_card_req: room not found, room_id: " << room_id << std::endl;
+            ss->call("game_deal_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+        if (room->state != Room::State::playing)
+        {
+            ss->call("game_deal_card_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取玩家对象
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+
+        if (!game_player_deal_card(room, uid, 1, deal_card_reason::normal, -1))
+        {
+            ss->call("game_deal_card_rsp", (int)ErrCode::api_game_cannot_deal_card);
+            return ;
+        }
+
+        ss->call("game_deal_card_rsp", (int)ErrCode::ok);
+    }
+
+    void RoomManager::game_report_no_uno_req(SessionPtr ss, int room_id)
+    {
+        int uid = ss->uid();
+        auto& data = ss->data().get_object();
+
+        // 检查状态
+        if (ss->state() != Session::State::gaming) {
+            std::cerr << "game_report_no_uno_req: bad state, " << (int)ss->state() << std::endl;
+            ss->call("game_report_no_uno_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        if (!data["room_id"].is<int>() || data["room_id"].get_integer() != room_id)
+        {
+            ss->call("game_report_no_uno_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取房间 & 检查状态
+        auto room_it = m_rooms.find(room_id);
+        if (room_it == m_rooms.end())
+        {
+            std::cerr << "game_report_no_uno_req: room not found, room_id: " << room_id << std::endl;
+            ss->call("game_report_no_uno_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+        auto& room = room_it->second;
+        if (room->state != Room::State::playing)
+        {
+            ss->call("game_report_no_uno_rsp", (int)ErrCode::api_invalid_call);
+            return ;
+        }
+
+        // 获取玩家对象
+        auto player_it = room->players.find(uid);
+        assert(player_it != room->players.end());
+
+        if (!game_player_report_no_uno(room, uid))
+        {
+            ss->call("game_report_no_uno_rsp", (int)ErrCode::api_game_cannot_report_no_uno);
+            return ;
+        }
+
+        ss->call("game_report_no_uno_rsp", (int)ErrCode::ok);
+    }
+
+    void RoomManager::get_room_list_req(SessionPtr ss)
+    {
+        // FIXME: 分页
+        lept_value::array_t ret;
+        for (auto& [room_id, room] : m_rooms)
+        {
+            ret.emplace_back(lept_value{
+                {"id", room_id},
+                {"title", room->title},
+                {"curr_players", room->curr_players},
+                {"max_players", room->max_players},
+                {"playing ", room->state != Room::State::idle},
+                {"joinable", room->state == Room::State::idle && room->curr_players <= room->max_players}
+            });
+        }
+
+        ss->call("get_room_list_rsp", ret, (int)SSMGR.get_session_count());
+    }
+
+    void RoomManager::update(time_point now)
+    {
+        for (auto& [room_id, room] : m_rooms)
+        {
+            try
+            {
+                game_update(room, now);
+            } catch (std::exception& e)
+            {
+                // 强行解除更新失败的游戏
+                std::cerr << "update: update room error, room_id " << room_id << std::endl;
+                std::cerr << e.what() << std::endl;
+                game_dismiss(room);
+            }
+        }
+    }
+
+    // todo: evtcenter.on("login");
+    // todo: evtcenter.on("logout");
 
 }
