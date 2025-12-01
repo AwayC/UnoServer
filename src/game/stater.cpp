@@ -9,23 +9,6 @@ namespace uno
 {
     using Stater = GameStater;
 
-    constexpr std::vector<Stater::StatEvent> STAT_EVENT_DISPLAY_TABLE = {
-        {1, [](Stater::Stat& stat) { return stat.draw_by_report; }, 1, 4},
-        {2, [](Stater::Stat& stat) { return stat.draw_by_draw_card; }, 1, 10 },
-        {3, [](Stater::Stat& stat) { return stat.get_val(stat.draw_black_cards, card::FUNC_DRAW4); }, 5, 3},
-        {4, [](Stater::Stat& stat)
-            {
-                return stat.get_val(stat.play_black_cards, card::FUNC_DRAW4) +
-                    stat.get_val(stat.play_cards, card::FUNC_DRAW4);
-            }, 2, 4},
-        {5, [](Stater::Stat& stat) { return stat.report; }, 5, 3},
-        {6, [](Stater::Stat& stat) { return stat.be_reported; }, 5, 3},
-        {7, [](Stater::Stat& stat) { return stat.uno; }, 5, 3},
-        {8, [](Stater::Stat& stat) { return stat.sp_forbid_others_uno; }, 6, 2},
-        {9, [](Stater::Stat& stat) { return stat.sp_draw_others_eat_by_self; }, 6, 2},
-        {10, [](Stater::Stat& stat) { return stat.sp_draw_by_others_max; }, 5, 10}
-    };
-
     void Stater::check_uno_traceable(RoomPtr room)
     {
         bool anyone_uno = false;
@@ -112,9 +95,20 @@ namespace uno
         return ret;
     }
 
-    std::vector<Stater::DisplayStat>& Stater::get_display_stat()
+    lept_value Stater::get_display_stat()
     {
-        return m_display_stat;
+        lept_value::array_t ret;
+        for (auto& stat : m_display_stat)
+        {
+            ret.emplace_back(lept_value{
+                {"id", stat.id},
+                {"score", stat.score},
+                {"counter", stat.counter},
+                {"uid", stat.uid},
+            });
+        }
+
+        return lept_value(std::move(ret));
     }
 
     int Stater::get_winner_stealer()
@@ -179,7 +173,7 @@ namespace uno
                 {
                     int score = (cnt - e.minDisplayCount) * e.score;
                     m_display_stat.push_back({
-                        i, uid, cnt, score
+                        (int)i, uid, cnt, score
                     });
                 }
             }

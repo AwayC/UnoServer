@@ -186,18 +186,18 @@ namespace C2S
 
 #define TEST_FUNC_S2S(funcname_, ...) do { \
         ++test_count; \
-        REGISTER_FUNC_S2S(funcname_); \
+        Router::Registerer reg(Router::Registerer::s2s, #funcname_, S2S::funcname_); \
         Router::arg_t args_ = Router::arg_t({__VA_ARGS__}); \
         Router::router().call_s2s(#funcname_, args_); \
-    } while (0);
+    } while (0)
 
-#define TEST_FUNC_C2S(funcname, ...) do { \
+#define TEST_FUNC_C2S(funcname_, ...) do { \
         test_count ++; \
-        REGISTER_FUNC_C2S(funcname); \
+        Router::Registerer reg(Router::Registerer::c2s, #funcname_, C2S::funcname_); \
         auto session_ = Session::create(); \
         Router::arg_t args_ = Router::arg_t({__VA_ARGS__}); \
-        Router::router().call_c2s(#funcname, session_, args_); \
-    } while(0);
+        Router::router().call_c2s(#funcname_, session_, args_); \
+    } while(0)
 
 
 void test_s2s()
@@ -263,7 +263,6 @@ void test_c2s()
 }
 
 int main() {
-
 
     test_s2s();
     test_c2s();

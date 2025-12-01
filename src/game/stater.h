@@ -61,14 +61,14 @@ namespace uno
 
         struct DisplayStat
         {
-            size_t id; // 事件ID
+            int id; // 事件ID
             int uid; // 玩家ID
             int counter; // 当前计数
             int score; // 积分
         };;
 
         lept_value get_stat(int uid);
-        std::vector<DisplayStat>& get_display_stat();
+        lept_value get_display_stat();
         int get_winner_stealer();
 
 
@@ -78,7 +78,7 @@ namespace uno
         void on_player_win(RoomPtr room, int sender, int winner);
 
         void on_card_deal(RoomPtr room, int uid, size_t rest_count,
-            size_t deal_count,std::vector<card_t>& deal_cards,
+            size_t deal_count, std::vector<card_t>& deal_cards,
             deal_card_reason reason, int report_by, int cursor);
 
         void on_card_play(RoomPtr room, int uid, card_t c, bool need_uno,
@@ -92,23 +92,23 @@ namespace uno
     if (funcname == #func) \
     { \
         /* 检查当前传入的 Args... 是否能用来调用 func */ \
-        if constexpr (std::is_invocable_v<decltype(&GameStater::func), GameStater*, Args...>) \
+        if constexpr (std::is_invocable_v<decltype(&GameStater::on_##func), GameStater*, Args...>) \
         { \
             /* 只有参数匹配时，编译器才会生成这行代码 */ \
             /* 使用 lambda 捕获 this 来调用成员函数 */ \
             std::apply([this](auto&&... params){ \
-                this->func(std::forward<decltype(params)>(params)...); \
+                this->on_##func(std::forward<decltype(params)>(params)...); \
             }, tup); \
-            return; \
         } \
+        return; \
     }
 
             auto tup = std::make_tuple(args...);
-            APPLY(on_game_start)
-            APPLY(on_player_left)
-            APPLY(on_player_win)
-            APPLY(on_card_deal)
-            APPLY(on_card_play)
+            APPLY(game_start)
+            APPLY(player_left)
+            APPLY(player_win)
+            APPLY(card_deal)
+            APPLY(card_play)
 
 #undef APPLY
         }
@@ -139,6 +139,23 @@ namespace uno
             int score; // 单项积分
             int minDisplayCount; // 最低展示计数
             // 积分 = （当前计数 - 最低展示计数） * 单项积分
+        };
+
+        const std::vector<StatEvent> STAT_EVENT_DISPLAY_TABLE = {
+            {1, [](Stat& stat) { return stat.draw_by_report; }, 1, 4},
+            {2, [](Stat& stat) { return stat.draw_by_draw_card; }, 1, 10 },
+            {3, [](Stat& stat) { return stat.get_val(stat.draw_black_cards, card::FUNC_DRAW4); }, 5, 3},
+            {4, [](Stat& stat)
+                {
+                return stat.get_val(stat.play_black_cards, card::FUNC_DRAW4) +
+                    stat.get_val(stat.play_cards, card::FUNC_DRAW4);
+                }, 2, 4},
+            {5, [](Stat& stat) { return stat.report; }, 5, 3},
+            {6, [](Stat& stat) { return stat.be_reported; }, 5, 3},
+            {7, [](Stat& stat) { return stat.uno; }, 5, 3},
+            {8, [](Stat& stat) { return stat.sp_forbid_others_uno; }, 6, 2},
+            {9, [](Stat& stat) { return stat.sp_draw_others_eat_by_self; }, 6, 2},
+            {10, [](Stat& stat) { return stat.sp_draw_by_others_max; }, 5, 10}
         };
 
     };

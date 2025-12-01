@@ -12,7 +12,7 @@
 #include "card.h"
 #include "constants.h"
 #include <unordered_map>
-#include "Stater.h"
+#include "stater.h"
 
 #define ROOM_NOW        std::chrono::system_clock::now()
 
@@ -54,9 +54,9 @@ namespace uno
         int id;
         State state = State::idle;
         std::string title;  // 房间标题
-        int owner;    // 所有人
-        int max_players;    // 房间大小
-        int curr_players;    // 当前玩家数
+        int owner = 0;    // 所有人
+        int max_players = 0;    // 房间大小
+        int curr_players = 0;    // 当前玩家数
 
         PlayerMap players; // 玩家列表
 
@@ -171,18 +171,6 @@ namespace uno
                     << ", uid: " << uid << " , room: " << room->id
                     << std::endl;
             }
-
-            if (event == "card_deal" && uid == sender)
-            {
-                try
-                {
-                    room->stater.on_event(room, sender, event, std::forward<Args>(args)...);
-                } catch (const std::exception& e)
-                {
-                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
-                    std::cerr << e.what() << std::endl;
-                }
-            }
         }
 
         template<typename... Args>
@@ -193,12 +181,26 @@ namespace uno
                 if (uid != sender)
                     send_event(room, uid, sender, event, args...);
             }
+        }
 
-            if (event != "card_deal")
+        template<typename... Args>
+        void call_stat_event(bool card_deal, RoomPtr room, int uid, int sender, const std::string& event, Args&&... args)
+        {
+            if (card_deal && event == "card_deal" && uid == sender)
             {
                 try
                 {
-                    room->stater.on_event(room, sender, event, std::forward<Args>(args)...);
+                    room->stater.on_event(event, room, sender, args...);
+                } catch (const std::exception& e)
+                {
+                    std::cerr << "Unexpected error while do on_event, event " << event << std::endl;
+                    std::cerr << e.what() << std::endl;
+                }
+            } else if (event != "card_deal")
+            {
+                try
+                {
+                    room->stater.on_event(event, room, sender, args...);
                 } catch (const std::exception& e)
                 {
                     std::cerr << "Unexpected error while do on_event, event " << event << std::endl;

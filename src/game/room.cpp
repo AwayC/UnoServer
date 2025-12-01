@@ -65,7 +65,7 @@ namespace uno
 
         // 玩家手牌
         lept_value::array_t my_cards;
-        if (uid > 0)
+        if (uid >= 0)
         {
             auto player = room->players.find(uid);
             assert(player != room->players.end());
@@ -76,9 +76,9 @@ namespace uno
         }
 
         lept_value::array_t seq;
-        for (auto& uid: room->seq)
+        for (auto& u: room->seq)
         {
-            seq.emplace_back(lept_value(uid));
+            seq.emplace_back(lept_value(u));
         }
 
         ret["seq"] = lept_value(std::move(seq));
@@ -205,7 +205,8 @@ namespace uno
         }
 
         // 通知玩家获胜
-        broadcast_event(room, -1, 'player_win', uid);
+        broadcast_event(room, -1, "player_win", uid);
+        call_stat_event(false, room, -1, -1, "player_win", uid);
 
         // 发送统计数据到lobby
         for (auto& [uid, player]: room->players)
@@ -215,7 +216,7 @@ namespace uno
         }
 
         // 展示分数面板
-        broadcast_event(room, -1, 'game_stat',
+        broadcast_event(room, -1, "game_stat",
                 room->stater.get_display_stat(),
                 uid, room->stater.get_winner_stealer());
     }
@@ -340,7 +341,8 @@ namespace uno
         }
 
         // 通知玩家离开
-        broadcast_event(room, uid, "player_left", reason);
+        broadcast_event(room, uid, "player_left", (int)reason);
+        call_stat_event(false, room, uid, uid, "player_left", reason);
 
         // 如果只有一人，则直接获胜
         if (room->state == Room::State::playing && room->curr_players == 1)
@@ -494,8 +496,16 @@ namespace uno
 
         // 发送通知
         int rest_count = static_cast<int>(player.rest.size());
-        send_event(room, uid, uid, "card_play", c, need_uno, with_uno, rest_count, player.rest, ahead);
-        broadcast_event(room, uid, 'card_play', c, need_uno, with_uno, rest_count, std::vector<card_t>(), ahead);
+        lept_value::array_t rest;
+        for (auto& card : player.rest)
+        {
+            rest.emplace_back(card);
+        }
+
+        send_event(room, uid, uid, "card_play", c, need_uno, with_uno, rest_count, lept_value(std::move(rest)), ahead);
+        call_stat_event(true, room,  uid, uid, "card_play", c, need_uno, with_uno, rest_count, player.rest, ahead);
+        broadcast_event(room, uid, "card_play", c, need_uno, with_uno, rest_count, lept_value(), ahead);
+        call_stat_event(false, room, uid, uid, "card_play", c, need_uno, with_uno, rest_count, std::vector<card_t>(), ahead);
 
         // 乱喊UNO, 罚牌
         if (!need_uno && with_uno)
@@ -600,8 +610,16 @@ namespace uno
         }
 
         // 发消息
-        send_event(room, uid, uid, "card_deal", player.rest.size(), arr.size(), arr, reason, req_by, room->cursor);
-        broadcast_event(room, uid, "card_deal", player.rest.size(), arr.size(), arr, reason, req_by, room->cursor);
+        lept_value::array_t lept_arr;
+        for (auto& card : arr)
+        {
+            lept_arr.emplace_back(card);
+        }
+
+        send_event(room, uid, uid, "card_deal", (int)player.rest.size(), (int)arr.size(), lept_arr, (int)reason, req_by, room->cursor);
+        call_stat_event(true, room, uid, uid, "card_deal", (int)player.rest.size(), arr.size(), arr, reason, req_by, room->cursor);
+        broadcast_event(room, uid, "card_deal", (int)player.rest.size(), (int)arr.size(), std::move(lept_arr), (int)reason, req_by, room->cursor);
+        call_stat_event(false, room, uid, uid, "card_deal", player.rest.size(), arr.size(), arr, reason, req_by, room->cursor);
 
         // 如果是下家，则刷新状态
         if (req_reason == deal_card_reason::normal)
@@ -629,7 +647,6 @@ namespace uno
     {
         auto it = room->players.find(uid);
         assert(it != room->players.end());
-        auto& player = it->second;
 
         std::cout << "game_player_report_no_uno: uid " << uid << std::endl;
 
@@ -745,7 +762,7 @@ namespace uno
         if (room->game_state == Room::GameState::dealing)
         {
             // 起始牌发牌逻辑
-            room->timer == room->timer - 1;
+            room->timer = room->timer - 1;
             if (room->timer <= 0)
             {
                 assert(room->cursor < room->seq.size());
@@ -764,11 +781,16 @@ namespace uno
 
                 // 发给玩家
                 std::vector<card_t> tmp = {c};
-                send_event(room, uid, uid, "card_deal", player.rest.size(), 1,
+                send_event(room, uid, uid, "card_deal", (int)player.rest.size(), 1,
+                    lept_value::array_t{c}, (int)deal_card_reason::normal, -1, room->cursor);
+                call_stat_event(true, room, uid, uid, "card_deal", player.rest.size(), 1,
                     tmp, deal_card_reason::normal, -1, room->cursor);
 
                 // 发送广播消息
-                broadcast_event(room, uid, "card_deal", player.rest.size(), 1, std::vector<card_t>(), deal_card_reason::normal, -1, room->cursor);
+                broadcast_event(room, uid, "card_deal", (int)player.rest.size(), 1,
+                    lept_value(), (int)deal_card_reason::normal, -1, room->cursor);
+                call_stat_event(false, room, uid, uid, "card_deal", player.rest.size(), 1,
+                    lept_value::array_t(), deal_card_reason::normal, -1, room->cursor);
 
                 // 更新状态
                 room->deal_turn = room->deal_turn + 1;
@@ -778,7 +800,7 @@ namespace uno
                     assert(room->seq[room->cursor] == room->dealer);
 
                     // 如果玩家手牌都发完了， 则轮到给庄家发牌
-                    room->game_state == Room::GameState::dealing_dealer;
+                    room->game_state = Room::GameState::dealing_dealer;
                     room->deal_turn = 0;
                 }
 
@@ -804,11 +826,15 @@ namespace uno
 
                 // 发给玩家
                 std::vector<card_t> tmp = {c};
-                send_event(room, uid, uid, "card_deal", player.rest.size(), 1,
+                send_event(room, uid, uid, "card_deal", (int)player.rest.size(), 1,
+                    lept_value::array_t{c}, (int)deal_card_reason::normal, -1, room->cursor);
+                call_stat_event(true, room, uid, uid, "card_deal", player.rest.size(), 1,
                     tmp, deal_card_reason::normal, -1, room->cursor);
 
                 // 发送广播消息
-                broadcast_event(room, uid, "card_deal", player.rest.size(), 1, std::vector<card_t>(), deal_card_reason::normal, -1, room->cursor);
+                broadcast_event(room, uid, "card_deal", (int)player.rest.size(), 1, lept_value(), (int)deal_card_reason::normal, -1, room->cursor);
+                call_stat_event(false, room, uid, uid, "card_deal", player.rest.size(), 1,
+                    lept_value::array_t(), deal_card_reason::normal, -1, room->cursor);
 
                 // 更新状态
                 room->deal_turn = room->deal_turn + 1;
@@ -907,7 +933,7 @@ namespace uno
                     if (game_can_play_card(room, c, false))
                         can_play_cards.push_back(c);
                     int color = card::get_color(c);
-                    if (color = card::COLOR_RED)
+                    if (color == card::COLOR_RED)
                         red_cards ++;
                     else if (color == card::COLOR_YELLOW)
                         yellow_cards ++;
@@ -1003,15 +1029,25 @@ namespace uno
         }
 
         // 创建房间
-        m_rooms[id] = std::make_shared<Room>(Room{
-            .id = id,
-            .owner = uid,
-            .max_players = player_count,
-            .curr_players = 1,
-            .title = title,
-            .seq = {uid},
-        });
-        m_rooms[id]->players[uid] =
+        // m_rooms[id] = std::make_shared<Room>(Room{
+        //     .id = id,
+        //     .owner = uid,
+        //     .max_players = player_count,
+        //     .curr_players = 1,
+        //     .title = title,
+        //     .seq = {uid},
+        // });
+        auto room = std::make_shared<Room>();
+        room->id = id;
+        room->title = title;
+        room->owner = uid;
+        room->max_players = player_count;
+        room->seq.push_back(uid);
+        room->curr_players = player_count;
+
+        m_rooms[id] = room;
+
+        room->players[uid] =
             Room::Player{
                 .nick = ss->nick(),
                 .email = ss->email(),
@@ -1108,7 +1144,7 @@ namespace uno
         if (room->players.contains(uid))
         {
             std::cout << "enter_room_req: player " << uid << " already in room " << room_id << std::endl;
-            assert(data["room_id"].is<int> && data["room_id"].get_integer() == room_id);
+            assert(data["room_id"].is<int>() && data["room_id"].get_integer() == room_id);
             ss->call("enter_room_rsp", (int)ErrCode::api_invalid_call, nullptr);
             return ;
         }
@@ -1290,7 +1326,12 @@ namespace uno
         }
 
         // 发送广播
-        broadcast_event(room, -1, "update_seats", room->seq);
+        lept_value::array_t tmp;
+        for (auto& it : room->seq)
+        {
+            tmp.emplace_back(it);
+        }
+        broadcast_event(room, -1, "update_seats", tmp);
 
         // 回包
         ss->call("shuffle_room_seats_rsp", (int)ErrCode::ok);
@@ -1382,7 +1423,6 @@ namespace uno
         // 检查是否是房主
         auto player_it = room->players.find(uid);
         assert(player_it != room->players.end());
-        auto& player = player_it->second;
         if (room->owner != uid)
         {
             ss->call("room_kickout_player_rsp", (int)ErrCode::api_room_not_owner);
@@ -1457,7 +1497,6 @@ namespace uno
         // 获取玩家对象
         auto player_it = room->players.find(uid);
         assert(player_it != room->players.end());
-        auto& player = player_it->second;
 
         // 检查是否是房主
         if (room->owner != uid)
@@ -1489,6 +1528,7 @@ namespace uno
 
         ss->call("start_game_rsp", (int)ErrCode::ok);
         broadcast_event(room, -1, "game_start", get_snapshot(room, -1));
+        call_stat_event(false, room, -1, -1,  "game_start", nullptr);
     }
 
     void RoomManager::game_play_card_req(SessionPtr ss, int room_id, card_t c, bool with_uno, int chg_color)
@@ -1497,7 +1537,7 @@ namespace uno
         auto& data = ss->data().get_object();
 
         // 检查状态
-        if (ss->state() != Session::State::gaming))
+        if (ss->state() != Session::State::gaming)
         {
             std::cerr << "game_play_card_req: bad state, " << (int)ss->state() << std::endl;
             ss->call("game_play_card_rsp", (int)ErrCode::api_invalid_call);

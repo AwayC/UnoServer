@@ -77,6 +77,28 @@ namespace uno
         }
 
     public:
+
+        struct Registerer
+        {
+#define REG_TAG(name) \
+    struct Tag_##name {}; \
+    static constexpr Tag_##name name{}; \
+        \
+    template<typename Func>  \
+    Registerer(Tag_##name tag, const std::string& funcname, Func func)  \
+    { \
+        router().register_##name(funcname, func);  \
+    }
+
+            REG_TAG(s2s);
+            REG_TAG(c2s);
+
+#undef REG_TAG
+
+        };
+
+
+
         static Router& router()
         {
             static Router instance;
@@ -166,6 +188,8 @@ namespace uno
         Router() = default;
         ~Router() = default;
     };
+
+
 
 #define CALL_S2S(funcname, ...) do { \
         Router::router().call_s2s(funcname, {__VA_ARGS__}); \
