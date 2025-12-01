@@ -5,6 +5,7 @@
 #include "lobby.h"
 #include "WebSocket.h"
 #include "core/config.h"
+#include "core/router.h"
 
 namespace uno
 {
@@ -189,27 +190,27 @@ namespace uno
         }
     }
 
+    // 拼接变量名需要用 ##
+    // 转字符串需要用 #
+
+#define REG_FUNC_S2S(func) \
+    static const Router::Registerer reg_s2s_##func(Router::Registerer::s2s, #func, S2S::func)
+
+#define REG_FUNC_C2S(func) \
+    static const Router::Registerer reg_c2s_##func(Router::Registerer::c2s, #func, C2S::func)
+
+    REG_FUNC_S2S(load_role_rsp);
+    REG_FUNC_S2S(create_role_rsp);
+    REG_FUNC_S2S(save_role_rsp);
+    REG_FUNC_S2S(round_flow);
+
+    REG_FUNC_C2S(logout_req);
+    REG_FUNC_C2S(login_req);
+    REG_FUNC_C2S(create_role_req);
+
 
     Lobby::Lobby()
     {
-#define REGISTER_FUNC_S2S(func) \
-        REGISTER_S2S(#func, S2S::func)
-
-#define REGISTER_FUNC_C2S(func) \
-        REGISTER_C2S(#func, C2S::func)
-
-        REGISTER_FUNC_S2S(load_role_rsp);
-        REGISTER_FUNC_S2S(create_role_rsp);
-        REGISTER_FUNC_S2S(save_role_rsp);
-        REGISTER_FUNC_S2S(round_flow);
-
-
-        REGISTER_FUNC_C2S(create_role_req);
-        REGISTER_FUNC_C2S(login_req);
-        REGISTER_FUNC_C2S(logout_req);
-
-#undef REGISTER_FUNC_S2S
-
         //todo evtcenter.on("logout");
 
     }
