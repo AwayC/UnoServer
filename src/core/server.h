@@ -51,15 +51,15 @@ namespace uno
         HttpServerPtr m_httpSvr;
         WsServer m_wsSvr;
 
-        DataBase m_db;
-        Background m_bg;
-
         struct
         {
             uv_loop_t* loop;
             uv_async_t async;
             ThreadQue<BackCallback> que;
         } m_loop_ctx;
+
+        DataBase m_db;
+        Background m_bg;
 
 
         void internalLogin(const std::string& name,

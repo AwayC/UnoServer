@@ -7,6 +7,7 @@
 #include <regex>
 #include <utility>
 #include "db.h"
+#include "../game/room.h"
 
 #define RETHROW_EXCEPTION_PTR(res, msg)                       \
     try {                                                    \
@@ -25,7 +26,7 @@ namespace uno
                             const std::string& ip,
                             const std::function<void(BackResult<std::pair<ErrCode, std::string>>)>& cb)
     {
-        auto task = [=]()
+        auto task = [=, this]()
         {
             bool exit = this->m_db.users_has_username(name);
             if (!exit)
@@ -114,6 +115,7 @@ namespace uno
         try
         {
             //todo room.update(now);
+            RoomManager::instance().update(now);
         } catch (const std::exception& e)
         {
             std::cerr << "Error while update room state" << std::endl;
@@ -123,6 +125,7 @@ namespace uno
         try
         {
             //todo ssmgr.update(now);
+            Ssmgr::instance().update(now);
         } catch (const std::exception& e)
         {
             std::cerr << "Error while update session state" << std::endl;
@@ -234,7 +237,7 @@ namespace uno
             return;
         }
 
-        m_db.users_has_username(argName, [=](BackResult<bool> res)
+        m_db.users_has_username(argName, [=, this](BackResult<bool> res)
         {
             try
             {
@@ -258,7 +261,7 @@ namespace uno
             }
 
             //todo internalLogin
-            internalLogin(argName, argPassword, ip, [=](BackResult<std::pair<ErrCode, std::string>> res)
+            internalLogin(argName, argPassword, ip, [=, this](BackResult<std::pair<ErrCode, std::string>> res)
             {
                 ErrCode code;
                 std::string token;
@@ -520,7 +523,7 @@ namespace uno
 
     void Server::run()
     {
-        m_db.connect([=](std::exception_ptr err)
+        m_db.connect([=, this](std::exception_ptr err)
         {
             if (err)
             {

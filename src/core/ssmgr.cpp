@@ -7,7 +7,7 @@
 
 namespace uno
 {
-    void Ssmgr::on_disconnect(SessionPtr& session, const std::string& reason)
+    void Ssmgr::on_disconnect(SessionPtr session, const std::string& reason)
     {
         for (size_t i = 0;i < m_sessions.size(); ++ i)
         {
@@ -33,59 +33,47 @@ namespace uno
     {
         auto ss = std::make_shared<Session>(socket);
 
-        auto weak_ss = std::weak_ptr<Session>(ss);
-        socket->onMessage([this, weak_ss](WsSessionPtr socket)
+        socket->onMessage([this, ss](WsSessionPtr socket)
         {
-            if (auto ss = weak_ss.lock())
+            lept_value json = socket->getJsonMessage();
+
+            if (!json.is<lept_value::array_t>())
             {
-                lept_value json = socket->getJsonMessage();
+                on_error(ss, std::runtime_error("receive msg type is not array"));
+                return;
+            }
 
-                if (!json.is<lept_value::array_t>())
-                {
-                    std::cerr << "session msg error" << std::endl;
-                    return;
-                }
+            auto& args = json.get<lept_value::array_t>();
 
-                auto& args = json.get<lept_value::array_t>();
+            assert(args.size() < 2);
 
-                assert(args.size() < 2);
-
-                try
-                {
-                    std::string& evt = args[0].get<std::string>();
-                    if (evt == "c2s")
-                        on_c2s_msg(ss, args);
-                } catch (const std::exception& e)
-                {
-
-                }
-
+            try
+            {
+                std::string& evt = args[0].get<std::string>();
+                if (evt == "c2s")
+                    on_c2s_msg(ss, args);
+            } catch (const std::exception& e)
+            {
 
             }
 
         });
 
-        socket->onError([this, weak_ss](WsSessionPtr socket, const std::exception& err)
+        socket->onError([this, ss](WsSessionPtr socket, const std::exception& err)
         {
-            if (auto ss = weak_ss.lock())
-            {
-                on_error(ss, err);
-            }
+            on_error(ss, err);
         });
 
-        socket->onClose([this, weak_ss](const WsSessionPtr& socket)
+        socket->onClose([this, ss](const WsSessionPtr& socket)
         {
-            if (auto ss = weak_ss.lock())
-            {
-                on_disconnect(ss, "close");
-            }
+            on_disconnect(ss, "close");
         });
 
 
         m_sessions.emplace_back(ss);
     }
 
-    void Ssmgr::on_c2s_msg(SessionPtr& session, const Router::arg_t& args)
+    void Ssmgr::on_c2s_msg(SessionPtr session, const Router::arg_t& args)
     {
         std::string funcname;
         try
@@ -105,7 +93,7 @@ namespace uno
 
         for (int i = 2;i < args.size();i ++)
         {
-            newargs.push_back(args[i]);
+            newargs.push_back(std::move(args[i]));
         }
 
         Router::router().call_c2s(funcname, session, newargs);

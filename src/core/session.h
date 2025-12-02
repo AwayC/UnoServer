@@ -12,6 +12,7 @@
 
 namespace uno
 {
+    using WeakWsPtr = std::weak_ptr<WsSession>;
     class Session {
     public:
         enum class State
@@ -49,7 +50,7 @@ namespace uno
             return std::make_shared<Session>();
         }
 
-        WsSessionPtr socket() const
+        WeakWsPtr socket() const
         {
             return m_wsSession;
         }
@@ -150,11 +151,17 @@ namespace uno
             (arr.emplace_back(lept_value(std::forward<Args>(args))), ...);
             lept_value lv(std::move(arr));
 
-            m_wsSession->send(lv);
+            if (auto ws = m_wsSession.lock())
+            {
+                ws->send(lv);
+            } else
+            {
+                std::cerr << "session ws session is expired" << std::endl;
+            }
         }
 
     private:
-        WsSessionPtr m_wsSession;
+        WeakWsPtr m_wsSession;
 
         int m_uid = -1;
         std::string m_name;

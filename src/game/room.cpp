@@ -987,6 +987,18 @@ namespace uno
         }
     }
 
+    /*
+     * c2s functions
+     */
+    static void handle_create_room_req(SessionPtr ss, const std::string& room_name, int player_count)
+    {
+        RoomManager::instance().create_room_req(ss, room_name, player_count);
+    }
+    static Router::Registerer reg_create_room_req(
+        Router::Registerer::c2s,
+        "create_room_req",
+        handle_create_room_req
+    );
     void RoomManager::create_room_req(SessionPtr ss, const std::string& title, int player_count)
     {
         int uid = ss->uid();
@@ -1000,7 +1012,7 @@ namespace uno
         }
         if (player_count < 2 || player_count > 20)
         {
-          ss->call("create_room_rsp", (int)ErrCode::api_room_invalid_title, nullptr);
+            ss->call("create_room_rsp", (int)ErrCode::api_room_invalid_title, nullptr);
         }
 
         // 检查状态
@@ -1065,6 +1077,15 @@ namespace uno
         std::cout << "create_room_req: create room successfully, uid " << uid << ", room_id " << id << std::endl;
     }
 
+    static void handle_enter_room_req(SessionPtr ss, int room_id, bool re_enter)
+    {
+        RoomManager::instance().enter_room_req(ss, room_id, re_enter);
+    }
+    static Router::Registerer reg_enter_room_req(
+        Router::Registerer::c2s,
+        "enter_room_req",
+        handle_enter_room_req
+    );
     void RoomManager::enter_room_req(SessionPtr ss, int room_id, bool re_enter)
     {
         int uid = ss->uid();
@@ -1169,6 +1190,15 @@ namespace uno
         broadcast_event(room, uid, "player_joined", get_player_snapshot(room, uid));
     }
 
+    static void handle_leave_room_req(SessionPtr ss, int room_id)
+    {
+        RoomManager::instance().leave_room_req(ss, room_id);
+    }
+    static Router::Registerer reg_leave_room_req(
+        Router::Registerer::c2s,
+        "leave_room_req",
+        handle_leave_room_req
+    );
     void RoomManager::leave_room_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1219,6 +1249,15 @@ namespace uno
         ss->call("leave_room_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_get_ready_req(SessionPtr ss, int room_id)
+    {
+        RoomManager::instance().get_ready_req(ss, room_id);
+    }
+    static Router::Registerer reg_get_ready_req(
+        Router::Registerer::c2s,
+        "get_ready_req",
+        handle_get_ready_req
+    );
     void RoomManager::get_ready_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1265,6 +1304,15 @@ namespace uno
         ss->call("get_ready_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_shuffle_room_seats_req(SessionPtr ss, int room_id)
+    {
+        RoomManager::instance().shuffle_room_seats_req(ss, room_id);
+    }
+    static Router::Registerer reg_shuffle_room_seats_req(
+        Router::Registerer::c2s,
+        "shuffle_room_seats_req",
+        handle_shuffle_room_seats_req
+    );
     void RoomManager::shuffle_room_seats_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1337,6 +1385,15 @@ namespace uno
         ss->call("shuffle_room_seats_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_room_use_voice_req(SessionPtr ss, int room_id, int voice_id)
+    {
+        RoomManager::instance().room_use_voice_req(ss, room_id, voice_id);
+    }
+    static Router::Registerer reg_room_use_voice_req(
+        Router::Registerer::c2s,
+        "room_use_voice_req",
+        handle_room_use_voice_req
+    );
     void RoomManager::room_use_voice_req(SessionPtr ss, int room_id, int voice_id)
     {
         int uid = ss->uid();
@@ -1387,6 +1444,15 @@ namespace uno
         ss->call("room_use_voice_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_room_kickout_player_req(SessionPtr ss, int room_id, int be_kicked)
+    {
+        RoomManager::instance().room_kickout_player_req(ss, room_id, be_kicked);
+    }
+    static Router::Registerer reg_room_kickout_player_req(
+        Router::Registerer::c2s,
+        "room_kickout_player_req",
+        handle_room_kickout_player_req
+    );
     void RoomManager::room_kickout_player_req(SessionPtr ss, int room_id, int be_kicked)
     {
         int uid = ss->uid();
@@ -1461,6 +1527,15 @@ namespace uno
         ss->call("room_kickout_player_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_start_game_req(SessionPtr ss, const std::string& room_name, int player_count)
+    {
+        RoomManager::instance().create_room_req(ss, room_name, player_count);
+    }
+    static Router::Registerer reg_start_game_req(
+        Router::Registerer::c2s,
+        "start_game_req",
+        handle_start_game_req
+    );
     void RoomManager::start_game_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1531,6 +1606,15 @@ namespace uno
         call_stat_event(false, room, -1, -1,  "game_start", nullptr);
     }
 
+    static void handle_game_play_card_req(SessionPtr ss, int room_id, card_t c, bool with_uno, int chg_color)
+    {
+        RoomManager::instance().game_play_card_req(ss, room_id, c, with_uno, chg_color);
+    }
+    static Router::Registerer reg_game_play_card_req(
+        Router::Registerer::c2s,
+        "game_play_card_req",
+        handle_game_play_card_req
+    );
     void RoomManager::game_play_card_req(SessionPtr ss, int room_id, card_t c, bool with_uno, int chg_color)
     {
         int uid = ss->uid();
@@ -1577,6 +1661,15 @@ namespace uno
         ss->call("game_play_card_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_game_deal_card_req(SessionPtr ss, const std::string& room_name, int player_count)
+    {
+        RoomManager::instance().create_room_req(ss, room_name, player_count);
+    }
+    static Router::Registerer reg_game_deal_card_req(
+        Router::Registerer::c2s,
+        "game_deal_card_req",
+        handle_game_deal_card_req
+    );
     void RoomManager::game_deal_card_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1622,6 +1715,15 @@ namespace uno
         ss->call("game_deal_card_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_game_report_no_uno_req(SessionPtr ss, int room_id)
+    {
+        RoomManager::instance().game_report_no_uno_req(ss, room_id);
+    }
+    static Router::Registerer reg_game_report_no_uno_req(
+        Router::Registerer::c2s,
+        "game_report_no_uno_req",
+        handle_game_report_no_uno_req
+    );
     void RoomManager::game_report_no_uno_req(SessionPtr ss, int room_id)
     {
         int uid = ss->uid();
@@ -1667,6 +1769,15 @@ namespace uno
         ss->call("game_report_no_uno_rsp", (int)ErrCode::ok);
     }
 
+    static void handle_get_room_list_req(SessionPtr ss)
+    {
+        RoomManager::instance().get_room_list_req(ss);
+    }
+    static Router::Registerer reg_get_room_list_req(
+        Router::Registerer::c2s,
+        "get_room_list_req",
+        handle_get_room_list_req
+    );
     void RoomManager::get_room_list_req(SessionPtr ss)
     {
         // FIXME: 分页
@@ -1686,6 +1797,10 @@ namespace uno
         ss->call("get_room_list_rsp", ret, (int)SSMGR.get_session_count());
     }
 
+
+    /*
+     * update
+     */
     void RoomManager::update(time_point now)
     {
         for (auto& [room_id, room] : m_rooms)
@@ -1702,7 +1817,6 @@ namespace uno
             }
         }
     }
-
     // todo: evtcenter.on("login");
     // todo: evtcenter.on("logout");
 

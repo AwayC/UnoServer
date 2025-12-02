@@ -29,7 +29,10 @@ namespace uno
             session->call("logout_ntf", reason);
             on_disconnect(session, reason);
 
-            session->socket()->close();
+            if (auto ws = session->socket().lock())
+            {
+                ws->close();
+            }
         }
 
         bool has_session(int uid)
@@ -51,7 +54,7 @@ namespace uno
             return m_uid2session.size();
         }
 
-        void update_session(SessionPtr& ss, const std::chrono::system_clock::time_point& now)
+        void update_session(SessionPtr ss, const std::chrono::system_clock::time_point& now)
         {
             //todo
             auto time_since_last_save = now - ss->last_save_time();
@@ -113,16 +116,16 @@ namespace uno
 
         Ssmgr() = default;
 
-        void on_error(const SessionPtr& session, const std::exception& err)
+        void on_error(SessionPtr session, const std::exception& err)
         {
             std::cerr << err.what() << std::endl;
         }
 
-        void on_disconnect(SessionPtr& session, const std::string& reason);
+        void on_disconnect(SessionPtr session, const std::string& reason);
 
-        void on_c2s_msg(SessionPtr& session, const Router::arg_t& arg);
+        void on_c2s_msg(SessionPtr session, const Router::arg_t& arg);
 
-        void on_attach(SessionPtr& session)
+        void on_attach(SessionPtr session)
         {
             assert(!m_uid2session.contains(session->uid()));
             m_uid2session[session->uid()] = session;

@@ -207,5 +207,8 @@ namespace uno
         Router::router().register_c2s(funcname, func); \
     } while (0)
 
+
+    // todo: evtcenter
+
 }
 
