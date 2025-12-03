@@ -26,25 +26,32 @@ namespace uno
 
 #define FUNCTION_TRAITS(traits, ...) \
     template <typename T> \
-    struct traits; \
+    struct traits##_helper; \
         \
-    template <typename... Args> \
-    struct traits<void(__VA_ARGS__ Args...)> \
+    template <typename C, typename... Args> \
+    struct traits##_helper<void(C::*)(__VA_ARGS__ Args...)> \
+    { \
+        using args_tuple = std::tuple<Args...>; \
+    }; \
+        \
+    template <typename C, typename... Args> \
+    struct traits##_helper<void(C::*)(__VA_ARGS__ Args...) const> \
     { \
         using args_tuple = std::tuple<Args...>; \
     }; \
         \
     template <typename... Args> \
-    struct traits<void(*)(__VA_ARGS__ Args...)> \
+    struct traits##_helper<void(*)(__VA_ARGS__ Args...)> \
     { \
         using args_tuple = std::tuple<Args...>; \
     }; \
         \
-    template <typename... Args> \
-    struct traits<std::function<void(__VA_ARGS__ Args...)>> \
-    { \
-        using args_tuple = std::tuple<Args...>; \
-    };
+    template <typename T, typename = void> \
+    struct traits : traits##_helper<T> {}; \
+        \
+    /* lambda 特例化 */  \
+    template <typename Lambda> \
+    struct traits<Lambda, std::void_t<decltype(&Lambda::operator())>> : traits##_helper<decltype(&Lambda::operator())> {};
 
 
         FUNCTION_TRAITS(function_traits_s2s)

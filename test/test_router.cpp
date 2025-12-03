@@ -250,7 +250,7 @@ void test_c2s()
         ++test_count;
         int cnt = passed_count;
         auto ss = Session::create();
-        std::function lambda_void2 = [cnt](SessionPtr ss)
+        auto lambda_void2 = [cnt](SessionPtr ss)
         {
             std::cout << "C2S lambda_void2 cnt = " << cnt << std::endl;
             ++passed_count;
@@ -259,6 +259,20 @@ void test_c2s()
         Router::router().register_c2s("lambda_void2", lambda_void2);
         Router::arg_t args_ = Router::arg_t({});
         Router::router().call_c2s("lambda_void2", ss, args_);
+    } while (0);
+
+    do {
+        ++test_count;
+        int cnt = passed_count;
+        auto ss = Session::create();
+
+        Router::router().register_c2s("lambda_void3", [cnt](SessionPtr ss)
+        {
+            std::cout << "C2S lambda_void3 cnt = " << cnt << std::endl;
+            ++passed_count;
+        });
+        Router::arg_t args_ = Router::arg_t({});
+        Router::router().call_c2s("lambda_void3", ss, args_);
     } while (0);
 }
 
