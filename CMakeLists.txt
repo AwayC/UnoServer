@@ -19,7 +19,7 @@ add_library(UnoServer
         src/core/background.cpp
         src/core/config.h
         src/core/config.cpp
-
+        src/core/eventemitter.h
 
         src/game/card.h
         src/game/constants.h
@@ -88,5 +88,11 @@ target_link_libraries(test_router
 #test helper
 add_executable(test_helper test/test_helper.cpp)
 target_link_libraries(test_helper
+    UnoServer
+)
+
+#test eventemitter
+add_executable(test_event_emitter test/test_event_emitter.cpp)
+target_link_libraries(test_event_emitter
     UnoServer
 )

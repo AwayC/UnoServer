@@ -206,16 +206,15 @@ namespace uno
         Router::router().call_c2s(funcname, session, {__VA_ARGS__}); \
     } while(0)
 
-#define REGISTER_S2S(funcname, func) do { \
-        Router::router().register_s2s(funcname, func); \
-    } while (0)
+#define REGISTER_S2S(funcname, func) \
+        Router::Registerer(Router::Tag_s2s, funcname, func); \
 
-#define REGISTER_C2S(funcname, func) do { \
-        Router::router().register_c2s(funcname, func); \
-    } while (0)
+#define REGISTER_C2S(funcname, func) \
+        Router::Registerer(Router::Tag_c2s, funcname, func); \
 
 
     // todo: evtcenter
+
 
 }
 
