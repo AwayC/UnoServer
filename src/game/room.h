@@ -254,6 +254,81 @@ namespace uno
         RoomManager()
         {
             m_next_room_id = generateIDBaseTime();
+
+            // register event
+            evtcenter.on("login", [this](SessionPtr ss)
+            {
+                int uid = ss->uid();
+                lept_value& data = ss->data();
+                if (!data.is<lept_value::object_t>())
+                {
+                    return ;
+                }
+
+                auto& data_obj = data.get<lept_value::object_t>();
+                auto room_id_it = data_obj.find("room_id");
+                if (room_id_it == data_obj.end() || !room_id_it->second.is<int>())
+                {
+                    return ;
+                }
+                int room_id = room_id_it->second.get<int>();
+
+                auto room = m_rooms.find(room_id);
+                if (room == m_rooms.end())
+                {
+                    return ;
+                }
+
+                auto player = room->second->players.find(uid);
+                if (player == room->second->players.end())
+                {
+                    return ;
+                }
+
+                // 找到玩家，设置上线
+                player->second.offline = true;
+                player->second.offline_time = ROOM_NOW;
+
+                std::cout << "login: broadcast online event for uid " << uid << std::endl;
+                broadcast_event(room->second, uid, "player_online");
+            });
+
+            evtcenter.on("logout", [this](SessionPtr ss, const std::string& reason)
+            {
+                int uid = ss->uid();
+                lept_value& data = ss->data();
+                if (!data.is<lept_value::object_t>())
+                {
+                    return ;
+                }
+
+                auto& data_obj = data.get<lept_value::object_t>();
+                auto room_id_it = data_obj.find("room_id");
+                if (room_id_it == data_obj.end() || !room_id_it->second.is<int>())
+                {
+                    return ;
+                }
+                int room_id = room_id_it->second.get<int>();
+
+                auto room = m_rooms.find(room_id);
+                if (room == m_rooms.end())
+                {
+                    return ;
+                }
+
+                auto player = room->second->players.find(uid);
+                if (player == room->second->players.end())
+                {
+                    return ;
+                }
+
+                // 找到玩家，设置离线
+                player->second.offline = true;
+                player->second.offline_time = ROOM_NOW;
+
+                std::cout << "logout: broadcast offline event for uid " << uid << std::endl;
+                broadcast_event(room->second, uid, "player_offline");
+            });
         }
 
 

@@ -1,6 +1,8 @@
 //
 // Created by AWAY on 25-12-4.
 //
+#include <core/router.h>
+
 #include "core/EventEmitter.h"
 
 void login(std::string name, int id) {
@@ -8,7 +10,7 @@ void login(std::string name, int id) {
 }
 
 int main() {
-    EventEmitter bus;
+    auto& bus = uno::evtcenter;
 
     bus.on("login", login);
 

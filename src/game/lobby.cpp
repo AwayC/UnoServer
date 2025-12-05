@@ -208,11 +208,21 @@ namespace uno
     REG_FUNC_C2S(login_req);
     REG_FUNC_C2S(create_role_req);
 
+    /**
+     * evtcenter
+     */
+    static void logout(SessionPtr ss)
+    {
+        if (ss->state() >= Session::State::logged)
+        {
+            ss->call("save_role_req", ss->uid(), ss->data(), ss->summary(), "save_role_rsp", ss->uid());
+        }
+    }
 
     Lobby::Lobby()
     {
-        //todo evtcenter.on("logout");
-
+        // evtcenter.on("login", );
+        // evtcenter.on("logout", logout);
     }
 
 }

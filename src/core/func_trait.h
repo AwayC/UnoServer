@@ -1,6 +1,7 @@
 //
 // Created by AWAY on 25-12-4.
 //
+#pragma once
 #include <functional>
 #include <type_traits>
 

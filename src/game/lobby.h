@@ -16,6 +16,12 @@ namespace uno {
     class Lobby
     {
     public:
+        static Lobby& instance()
+        {
+            static Lobby ins;
+            return ins;
+        }
+    private:
         Lobby();
     };
 

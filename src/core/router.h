@@ -14,6 +14,7 @@
 #include <type_traits>
 #include <functional>
 #include <utility>
+#include "EventEmitter.h"
 
 namespace uno
 {
@@ -214,6 +215,7 @@ namespace uno
 
 
     // todo: evtcenter
+    extern EventEmitter evtcenter;
 
 
 }

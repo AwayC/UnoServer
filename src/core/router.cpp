@@ -6,5 +6,5 @@
 
 namespace uno
 {
-
+    EventEmitter evtcenter;
 }
