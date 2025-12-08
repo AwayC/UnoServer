@@ -96,3 +96,9 @@ add_executable(test_event_emitter test/test_event_emitter.cpp)
 target_link_libraries(test_event_emitter
     UnoServer
 )
+
+#test api
+add_executable(test_api test/test_example/test.cpp)
+target_link_libraries(test_api
+    UnoServer
+)

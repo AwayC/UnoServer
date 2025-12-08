@@ -75,6 +75,7 @@ namespace uno
     void DataBase::users_has_username(const std::string& username,
                                         dbResultCb<bool> cb)
     {
+        std::cout << "db users_has_username" << std::endl;
         std::string name = trim_and_lower(username);
         std::function<bool()> task = [this, username]()
         {

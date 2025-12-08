@@ -11,7 +11,6 @@
 #include "types.h"
 #include "session.h"
 #include <tuple>
-#include <type_traits>
 #include <functional>
 #include <utility>
 #include "EventEmitter.h"

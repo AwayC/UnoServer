@@ -48,7 +48,10 @@ namespace uno {
                 m_cbQue(callbackQue),
                 m_async(async) { }
 
-            ~Background();
+            ~Background()
+            {
+                stop();
+            };
 
             /**
              * 返回结果的任务

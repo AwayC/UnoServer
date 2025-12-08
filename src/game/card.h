@@ -41,45 +41,45 @@ namespace uno {
             FUNC_CHGCOLOR,
         };
 
-        bool is_valid_color(card_t c)
+        inline bool is_valid_color(card_t c)
         {
             return c >= COLOR_ALL && c <= COLOR_GREEN;
         }
 
-        bool is_valid_func(card_t f)
+        inline bool is_valid_func(card_t f)
         {
             return f >= FUNC_NONE && f <= FUNC_CHGCOLOR;
         }
 
-        int get_color(card_t c)
+        inline int get_color(card_t c)
         {
             int ret = c & 7;
             assert(is_valid_color(ret));
             return ret;
         }
 
-        int get_func(card_t c)
+        inline int get_func(card_t c)
         {
             int ret = (c >> 3) & 15;
             assert(is_valid_func(ret));
             return ret;
         }
 
-        card_t compose_card(int c, int f)
+        inline card_t compose_card(int c, int f)
         {
             assert(is_valid_color(c));
             assert(is_valid_func(f));
             return (c & 7) | ((f & 15) << 3);
         }
 
-        std::pair<int, int> decompose_card(card_t c)
+        inline std::pair<int, int> decompose_card(card_t c)
         {
             int color = get_color(c);
             int func = get_color(c);
             return { color, func };
         }
 
-        bool is_valid_card(card_t c)
+        inline bool is_valid_card(card_t c)
         {
             int color = c & 7;
             if (!is_valid_color(color))
@@ -100,7 +100,7 @@ namespace uno {
             return true;
         }
 
-        bool is_func_card(card_t c)
+        inline bool is_func_card(card_t c)
         {
             int func = get_func(c);
             return (func == FUNC_SKIP || func == FUNC_REVERSE || func == FUNC_DRAW2 || func == FUNC_DRAW4 || func == FUNC_CHGCOLOR);

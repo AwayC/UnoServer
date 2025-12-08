@@ -49,9 +49,7 @@ namespace uno
 
             try
             {
-                std::string& evt = args[0].get<std::string>();
-                if (evt == "c2s")
-                    on_c2s_msg(ss, args);
+                on_c2s_msg(ss, args);
             } catch (const std::exception& e)
             {
 
@@ -69,6 +67,10 @@ namespace uno
             on_disconnect(ss, "close");
         });
 
+        ss->on_attach([this](SessionPtr ss)
+        {
+            this->on_attach(ss);
+        });
 
         m_sessions.emplace_back(ss);
     }

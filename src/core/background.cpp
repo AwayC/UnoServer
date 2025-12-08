@@ -101,6 +101,10 @@ namespace uno
         m_running = false;
         m_taskQue.stop();
 
+        if (m_thread.has_value() && m_thread->joinable()) {
+            m_thread->join();
+        }
+
     }
 
     void Background::thread_loop()

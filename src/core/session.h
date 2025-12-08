@@ -13,7 +13,7 @@
 namespace uno
 {
     using WeakWsPtr = std::weak_ptr<WsSession>;
-    class Session {
+    class Session : public std::enable_shared_from_this<Session> {
     public:
         enum class State
         {
@@ -127,7 +127,10 @@ namespace uno
             m_uid = uid;
             m_name = name;
             m_email = email;
-            //todo: emit('attach')
+            if (m_on_attach)
+            {
+                m_on_attach(shared_from_this());
+            }
         }
 
         void attach_data(const std::string& nick,
@@ -145,7 +148,7 @@ namespace uno
         {
             //todo emit('s2c', funcname, ...args)
             std::vector<lept_value> arr;
-            arr.emplace_back(lept_value("s2c"));
+            // arr.emplace_back(lept_value("s2c"));
             arr.emplace_back(lept_value(funcname));
             // 折叠表达式，解包
             (arr.emplace_back(lept_value(std::forward<Args>(args))), ...);
@@ -158,6 +161,11 @@ namespace uno
             {
                 std::cerr << "session ws session is expired" << std::endl;
             }
+        }
+
+        void on_attach(std::function<void(SessionPtr)> cb)
+        {
+            m_on_attach = cb;
         }
 
     private:
@@ -175,6 +183,7 @@ namespace uno
         bool m_dirty = false;
         std::chrono::system_clock::time_point m_last_save_time;
 
+        std::function<void(SessionPtr)> m_on_attach;
     };
 
     using SessionPtr = std::shared_ptr<Session>;

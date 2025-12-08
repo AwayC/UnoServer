@@ -11,9 +11,11 @@
 #include "WebSocket.h"
 #include "WsServer.h"
 #include "leptjson.h"
+#include "game/lobby.h"
+#include "game/room.h"
 
 #define UNO_DB_PATH "uno_game.db3"
-#define UNO_SERVER_PORT 8080
+#define UNO_SERVER_PORT 8081
 #define UNO_SERVER_IP "127.0.0.1"
 
 using HttpServerPtr = std::shared_ptr<HttpServer>;
@@ -26,13 +28,26 @@ namespace uno
         Server(lept_value& cfg) :
             m_cfg(cfg),
             m_staticDir("/../static/"),
-            m_httpSvr(HttpServer::create( UNO_SERVER_IP, UNO_SERVER_PORT)),
+            m_httpSvr(HttpServer::create( UNO_SERVER_IP,
+                cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
             m_wsSvr(m_httpSvr),
             m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
             m_db(&m_bg, UNO_DB_PATH)
         {
+            std::cout << cfg.stringify() << std::endl;
+            std::cout << m_cfg.stringify() << std::endl;
+            std::cout << "server ip: " << UNO_SERVER_IP << std::endl;
+            std::cout << "server port: " << (cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT) << std::endl;
+
             //todo init server
             m_loop_ctx.loop = m_httpSvr->getLoop();
+            m_loop_ctx.async.data = this;
+            uv_async_init(m_loop_ctx.loop, &m_loop_ctx.async, background_handler);
+
+            // init lobby register functions
+            Lobby::instance();
+            // init room manager register functions
+            RoomManager::instance();
             registerRouter();
         }
 
@@ -88,6 +103,21 @@ namespace uno
         void pageUpdateEmail(httpReq* req, httpRespPtr resp);
 
         void pageUpdatePassword(httpReq* req, httpRespPtr resp);
+
+        // background handler
+        static void background_handler(uv_async_t* handle)
+        {
+            auto self = static_cast<Server*>(handle->data);
+            while (!self->m_loop_ctx.que.empty())
+            {
+                auto task = self->m_loop_ctx.que.try_pop();
+                if (task != std::nullopt && task.value())
+                {
+                    std::cout << "handle a task" << std::endl;
+                    task.value()();
+                }
+            }
+        }
 
     };
 }
