@@ -9,6 +9,7 @@
 #include "db.h"
 #include "../game/room.h"
 #include "../game/lobby.h"
+#include "../game/dbagent.h"
 
 #define RETHROW_EXCEPTION_PTR(res, msg)                       \
     try {                                                    \
@@ -22,6 +23,33 @@
 
 namespace uno
 {
+    Server::Server(lept_value& cfg) :
+                m_cfg(cfg),
+                m_staticDir("/../static/"),
+                m_httpSvr(HttpServer::create( UNO_SERVER_IP,
+                    cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
+                m_wsSvr(m_httpSvr),
+                m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
+                m_db(&m_bg, UNO_DB_PATH),
+                m_dbagent(&m_db)
+    {
+        std::cout << cfg.stringify() << std::endl;
+        std::cout << m_cfg.stringify() << std::endl;
+        std::cout << "server ip: " << UNO_SERVER_IP << std::endl;
+        std::cout << "server port: " << (cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT) << std::endl;
+
+        //todo init server
+        m_loop_ctx.loop = m_httpSvr->getLoop();
+        m_loop_ctx.async.data = this;
+        uv_async_init(m_loop_ctx.loop, &m_loop_ctx.async, background_handler);
+
+        // init lobby register functions
+        Lobby::instance();
+        // init room manager register functions
+        RoomManager::instance();
+        registerRouter();
+    }
+
     void Server::internalLogin(const std::string& name,
                             const std::string& password,
                             const std::string& ip,
@@ -87,6 +115,22 @@ namespace uno
         });
     }
 
+    void Server::startUpdateTimer()
+    {
+        uv_timer_init(uv_default_loop(), &m_updateTimer);
+        m_updateTimer.data = this;
+        uv_timer_start(&m_updateTimer, [](uv_timer_t* handle)
+        {
+            auto self = static_cast<Server*>(handle->data);
+            self->onUpdate();
+        }, 100, 100);
+    }
+
+    void Server::stopUpdateTimer()
+    {
+        uv_timer_stop(&m_updateTimer);
+    }
+
     void Server::onDbConnected()
     {
         std::cout << "Database connected" << std::endl;
@@ -95,6 +139,10 @@ namespace uno
         // 开启 background thread
         std::cout << "Background thread started" << std::endl;
 
+        // 主Tick循环
+        startUpdateTimer();
+
+        // 开启监听
         m_httpSvr->start();
     }
 
@@ -110,10 +158,10 @@ namespace uno
     }
 
 
-    void Server::onSocketConnection(const WsSessionPtr& socket)
+    void Server::onSocketConnection(WsSessionPtr& socket)
     {
         std::cout << "Accept new socket" << std::endl;
-        // todo ssmgr.accept(socket);
+        Ssmgr::instance().accept(socket);
     }
 
     void Server::onUpdate()
@@ -472,7 +520,7 @@ namespace uno
         {
             if (err)
             {
-                std::cerr << "Unexcepted error when update email, uid: " << uid << std::endl;
+                std::cerr << "Unexpected error when update email, uid: " << uid << std::endl;
                 resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_internal_error)},
                 {"msg", "Db error"}
@@ -550,7 +598,7 @@ namespace uno
         {
             if (err)
             {
-                std::cerr << "Unexcepted error when update password, uid: " << uid << std::endl;
+                std::cerr << "Unexpected error when update password, uid: " << uid << std::endl;
                 resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_internal_error)},
                 {"msg", "Db error"}

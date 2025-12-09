@@ -11,6 +11,7 @@
 #include "WebSocket.h"
 #include "WsServer.h"
 #include "leptjson.h"
+#include "game/dbagent.h"
 #include "game/lobby.h"
 #include "game/room.h"
 
@@ -25,31 +26,7 @@ namespace uno
     class Server
     {
     public:
-        Server(lept_value& cfg) :
-            m_cfg(cfg),
-            m_staticDir("/../static/"),
-            m_httpSvr(HttpServer::create( UNO_SERVER_IP,
-                cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
-            m_wsSvr(m_httpSvr),
-            m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
-            m_db(&m_bg, UNO_DB_PATH)
-        {
-            std::cout << cfg.stringify() << std::endl;
-            std::cout << m_cfg.stringify() << std::endl;
-            std::cout << "server ip: " << UNO_SERVER_IP << std::endl;
-            std::cout << "server port: " << (cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT) << std::endl;
-
-            //todo init server
-            m_loop_ctx.loop = m_httpSvr->getLoop();
-            m_loop_ctx.async.data = this;
-            uv_async_init(m_loop_ctx.loop, &m_loop_ctx.async, background_handler);
-
-            // init lobby register functions
-            Lobby::instance();
-            // init room manager register functions
-            RoomManager::instance();
-            registerRouter();
-        }
+        Server(lept_value& cfg);
 
 
         const DataBase* get_db() const
@@ -74,7 +51,9 @@ namespace uno
         } m_loop_ctx;
 
         DataBase m_db;
+        DBagent m_dbagent;
         Background m_bg;
+        uv_timer_t m_updateTimer;
 
 
         void internalLogin(const std::string& name,
@@ -84,13 +63,17 @@ namespace uno
 
         void registerRouter();
 
+        void startUpdateTimer();
+
+        void stopUpdateTimer();
+
         void onDbConnected();
 
         void onDbConnectFailed();
 
         void onServerListen();
 
-        void onSocketConnection(const WsSessionPtr& socket);
+        void onSocketConnection(WsSessionPtr& socket);
 
         void onUpdate();
 

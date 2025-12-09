@@ -21,13 +21,17 @@ namespace uno {
                                     const std::string& callback,
                                     int callback_data)
             {
-                m_db->uno_game_players_load_role(uid, [=](BackResult<lept_value> result)
+                std::cout << "dbagent load_role_req" << std::endl;
+                m_db->uno_game_players_load_role(uid, [=, this](BackResult<lept_value> result)
                 {
-                    try
+                    std::cout << "dbagent load_role_req callback: " << callback
+                        << " uid: " << uid << " callback_data: " << callback_data << std::endl;
+                    if (result.index() == 0)
                     {
                         lept_value& data = std::get<lept_value>(result);
                         if (data.get_type() == lept_type::null)
                         {
+                            std::cout << "load_role_req call db not exists " << callback << std::endl;
                             CALL_S2S(callback, (int)ErrCode::db_not_exists,
                                                     "", lept_value::object_t(),
                                                     lept_value::object_t(),
@@ -35,18 +39,16 @@ namespace uno {
                             return;
                         }
 
+                        std::cout << "load_role_req call db success" << std::endl;
                         CALL_S2S(callback, (int)ErrCode::ok,
                                                 data["nickname"],
-                                                data["summary"],
-                                                data["data"],
+                                                data["summary"].get_object(),
+                                                data["data"].get_object(),
                                                 callback_data);
 
-                    } catch (const std::exception& e)
+                    } else
                     {
                         std::cerr << "Unexpected exception while loading role" << std::endl;
-                        std::cerr << e.what() << std::endl;
-
-
                         CALL_S2S(callback, (int)ErrCode::api_db_error,
                                             "", lept_value::object_t(),
                                             lept_value::object_t(),
@@ -56,25 +58,29 @@ namespace uno {
                 });
             };
 
-            std::function create_role_req = [this](int uid,
-                                std::string& nick,
+            std::function  create_role_req = [this](int uid,
+                                const std::string& nick,
                                 const std::string& callback,
                                 int callback_data)
             {
-                auto task = [=]()
+                std::cout << "dbagent create_role_req" << std::endl;
+                auto task = [=, this]()
                 {
+                    std::cout << "players_has_nickname: " << nick << std::endl;
                     bool exit = this->m_db->uno_game_players_has_nickname(nick);
+                    std::cout << "players_has_nickname: " << exit << std::endl;
                     if (!exit)
                     {
                         this->m_db->uno_game_players_create_role(uid, nick);
+                        std::cout << "uno_game_players_create_role success" << std::endl;
                     }
 
                     return exit;
                 };
 
-                m_db->get_bg()->submit(task, [=](BackResult<bool> result)
+                m_db->get_bg()->submit<bool>(task, [=](BackResult<bool> result)
                 {
-                    try
+                    if (result.index() == 0)
                     {
                         bool exit = std::get<bool>(result);
                         if (exit)
@@ -82,12 +88,12 @@ namespace uno {
                             CALL_S2S(callback, (int)ErrCode::api_nick_in_use, callback_data);
                             return;
                         }
-                    } catch (const std::exception& e)
+                    } else
                     {
                         std::cerr << "Unexpected exception while creating role" << std::endl;
-                        std::cerr << e.what() << std::endl;
 
                         CALL_S2S(callback, (int)ErrCode::api_db_error, callback_data);
+                        return ;
                     }
 
                     CALL_S2S(callback, (int)ErrCode::ok, callback_data);
@@ -100,12 +106,7 @@ namespace uno {
                                     const std::string& callback,
                                     int callback_data)
             {
-                if (data.empty() || summary.empty())
-                {
-                    if (!callback.empty())
-                        CALL_S2S(callback, (int)ErrCode::api_db_error, callback_data);
-                    return;
-                }
+                std::cout << "dbagent save_role_req" << std::endl;
 
                 m_db->uno_game_players_save_role(uid, lept_value(std::move(data)),
                                                 lept_value(std::move(summary)),
@@ -122,6 +123,7 @@ namespace uno {
 
                         if (!callback.empty())
                             CALL_S2S(callback, (int)ErrCode::api_db_error, callback_data);
+                        return ;
                     }
 
                     if (!callback.empty())
@@ -131,9 +133,9 @@ namespace uno {
                 });
             };
 
-            Router::router().register_c2s("load_role_req", load_role_req);
-            Router::router().register_c2s("create_role_req", create_role_req);
-            Router::router().register_c2s("save_role_req", save_role_req);
+            Router::router().register_s2s("load_role_req", load_role_req);
+            Router::router().register_s2s("create_role_req", create_role_req);
+            Router::router().register_s2s("save_role_req", save_role_req);
         }
         ~DBagent() = default;
 

@@ -2,7 +2,7 @@
 // Created by AWAY on 25-12-4.
 //
 #include <core/router.h>
-
+#include "core/session.h"
 #include "core/EventEmitter.h"
 
 void login(std::string name, int id) {
@@ -14,7 +14,9 @@ int main() {
 
     bus.on("login", login);
 
-    bus.on("login", [](std::string name, int id) {
+    auto ss = std::make_shared<uno::Session>();
+    bus.on("login", [ss](std::string name, int id) {
+        std::cout << "ss uid: " << ss->uid() << std::endl;
         std::cout << "[Login] Logged to database for ID: " << id << std::endl;
     });
 

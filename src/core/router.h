@@ -31,19 +31,19 @@ namespace uno
     template <typename C, typename... Args> \
     struct traits##_helper<void(C::*)(__VA_ARGS__ Args...)> \
     { \
-        using args_tuple = std::tuple<Args...>; \
+        using args_tuple = std::tuple<std::decay_t<Args>...>; \
     }; \
         \
     template <typename C, typename... Args> \
     struct traits##_helper<void(C::*)(__VA_ARGS__ Args...) const> \
     { \
-        using args_tuple = std::tuple<Args...>; \
+        using args_tuple = std::tuple<std::decay_t<Args>...>; \
     }; \
         \
     template <typename... Args> \
     struct traits##_helper<void(*)(__VA_ARGS__ Args...)> \
     { \
-        using args_tuple = std::tuple<Args...>; \
+        using args_tuple = std::tuple<std::decay_t<Args>...>; \
     }; \
         \
     template <typename T, typename = void> \
@@ -118,10 +118,13 @@ namespace uno
             {
                 std::cerr << "Unhandled internal s2s msg " << funcname << std::endl;
                 return ;
+
             }
 
             try
             {
+                lept_value json = lept_value::array_t(args);
+                std::cout << "call_s2s: " << funcname << " " << json.stringify() << std::endl;
                 s2s_funcs[funcname](args);
             } catch (const std::exception& e)
             {
@@ -154,6 +157,7 @@ namespace uno
 
             try
             {
+                std::cout << "call_c2s: " << funcname << std::endl;
                 c2s_funcs[funcname](std::move(session), args);
             } catch (const std::exception& e)
             {

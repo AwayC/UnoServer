@@ -54,7 +54,7 @@ namespace uno {
             };
 
             /**
-             * 返回结果的任务
+             * 返回结果的任务, 要显式标注模版类型
              */
             template<typename T>
             void submit(std::function<T()> task,

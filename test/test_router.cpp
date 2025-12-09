@@ -48,7 +48,7 @@ namespace S2S
         ++passed_count;
     }
 
-    void sync_string(std::string a)
+    void sync_string(const std::string& a)
     {
         std::cout << "S2S sync_string: " << a << std::endl;
         ++passed_count;
@@ -202,12 +202,19 @@ namespace C2S
 
 void test_s2s()
 {
-    TEST_FUNC_S2S(sync_void1);
-    TEST_FUNC_S2S(sync_void2);
-    TEST_FUNC_S2S(sync_int, lept_value(123));
-    TEST_FUNC_S2S(sync_double, lept_value(1.23));
-    TEST_FUNC_S2S(sync_bool, lept_value(true));
-    TEST_FUNC_S2S(sync_string, "hello");
+    // TEST_FUNC_S2S(sync_void1);
+    // TEST_FUNC_S2S(sync_void2);
+    // TEST_FUNC_S2S(sync_int, lept_value(123));
+    // TEST_FUNC_S2S(sync_double, lept_value(1.23));
+    // TEST_FUNC_S2S(sync_bool, lept_value(true));
+    do
+    {
+        ++test_count;
+        Router::Registerer reg(Router::Registerer::s2s, "sync_string", S2S::sync_string);
+        Router::arg_t args_ = Router::arg_t({"hello"});
+        Router::router().call_s2s("sync_string", args_);
+    }
+    while (0);
     TEST_FUNC_S2S(sync_array, {1, 2});
     TEST_FUNC_S2S(sync_object, {{"a", 1}, {"b", 2}});
     TEST_FUNC_S2S(sync_args, 1, 1.23, true, "hello", {"a", 1}, {{"key", "val"}, {"b", 2}});

@@ -3,11 +3,11 @@
 //
 
 #include "core/server.h"
+#include "core/config.h"
 
 int main()
 {
-    lept_value cfg;
-    cfg.parse(R"({"port": 8081, "secret": "123456"})");
-    uno::Server svr(cfg);
+    uno::g_config.parse(R"({"port": 8081, "secret": "123456"})");
+    uno::Server svr(uno::g_config);
     svr.run();
 }

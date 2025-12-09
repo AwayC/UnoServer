@@ -293,7 +293,7 @@ namespace uno
                 broadcast_event(room->second, uid, "player_online");
             });
 
-            evtcenter.on("logout", [this](SessionPtr ss, const std::string& reason)
+            evtcenter.on("logout", [this](SessionPtr ss, std::string reason)
             {
                 int uid = ss->uid();
                 lept_value& data = ss->data();
@@ -302,13 +302,11 @@ namespace uno
                     return ;
                 }
 
-                auto& data_obj = data.get<lept_value::object_t>();
-                auto room_id_it = data_obj.find("room_id");
-                if (room_id_it == data_obj.end() || !room_id_it->second.is<int>())
+                int room_id = data["room_id"].get<int>();
+                if (room_id < 0)
                 {
                     return ;
                 }
-                int room_id = room_id_it->second.get<int>();
 
                 auto room = m_rooms.find(room_id);
                 if (room == m_rooms.end())

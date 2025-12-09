@@ -344,25 +344,30 @@ namespace uno
             throw;
         }
     }
-
+    \
     void DataBase::uno_game_players_has_nickname(const std::string& name,
                                                 dbResultCb<bool> cb)
     {
         std::function<bool()> task = [this, name]()
         {
-           try
-           {
-               SQLite::Statement query(m_db, R"(SELECT uid FROM uno_game_players WHERE nickname = ?)");
-               query.bind(1, name);
-               return query.executeStep();
-           } catch (std::exception& e)
-           {
-               std::cerr << "unexpected error when update users: " << e.what() << std::endl;
-               throw;
-           }
+            return uno_game_players_has_nickname(name);
         };
 
         m_bg->submit<bool>(task, std::move(cb));
+    }
+
+    bool DataBase::uno_game_players_has_nickname(const std::string& name)
+    {
+        try
+        {
+            SQLite::Statement query(m_db, R"(SELECT uid FROM uno_game_players WHERE nickname = ?)");
+            query.bind(1, name);
+            return query.executeStep();
+        } catch (std::exception& e)
+        {
+            std::cerr << "unexpected error when update users: " << e.what() << std::endl;
+            throw;
+        }
     }
 
     void DataBase::uno_game_players_create_role(int uid, const std::string& nickname, dbExcepCb cb)
@@ -408,12 +413,19 @@ namespace uno
             query.bind(1, uid);
             if (query.executeStep())
             {
+                lept_value summary, data;
+                summary.parse(query.getColumn(2).getString());
+                data.parse(query.getColumn(3).getString());
+
+                assert(summary.is<lept_value::object_t>());
+                assert(data.is<lept_value::object_t>());
+
                 return {
                             {"uid", uid},
                             {"nickname", query.getColumn(0).getString()},
                             {"creation_time", query.getColumn(1).getInt()},
-                            {"summary", query.getColumn(2).getString()},
-                            {"data", query.getColumn(3).getString()},
+                            {"summary", summary},
+                            {"data", data},
                         };
             }
 

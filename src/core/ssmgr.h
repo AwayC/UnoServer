@@ -27,12 +27,14 @@ namespace uno
         void detach(SessionPtr session, const std::string& reason)
         {
             session->call("logout_ntf", reason);
-            on_disconnect(session, reason);
-
+            // on_disconnect(session, reason);
             if (auto ws = session->socket().lock())
             {
                 ws->close();
+                return ;
             }
+
+            on_disconnect(session, reason);
         }
 
         bool has_session(int uid)
@@ -123,7 +125,7 @@ namespace uno
 
         void on_disconnect(SessionPtr session, const std::string& reason);
 
-        void on_c2s_msg(SessionPtr session, const Router::arg_t& arg);
+        void on_c2s_msg(SessionPtr session, Router::arg_t& args);
 
         void on_attach(SessionPtr session)
         {

@@ -22,6 +22,9 @@ namespace uno
         std::map<std::string, std::vector<std::any>> listeners;
 
     public:
+        /**
+         * 注册函数参数不支持引用和const
+         */
         template <typename Func>
         void on(const std::string& eventName, Func&& callback) {
             listeners[eventName].push_back(FunctionType<Func>(std::forward<Func>(callback)));

@@ -63,9 +63,8 @@ void WsSession::close()
         delete handle;
     });
 
-    m_owner->removeWsSession(shared_from_this());
-
     WS_CALLBACK(m_onCloseCb, shared_from_this());
+    m_owner->removeWsSession(shared_from_this());
 
 }
 
@@ -104,7 +103,7 @@ void WsSession::recv_cb(uv_stream_t* stream,
             std::cerr << "recv err: " << uv_err_name(nread) << std::endl;
         } else
         {
-            std::cout << "connection closed" << std::endl;
+            std::cout << "websocket connection closed" << std::endl;
         }
 
         self->close();
@@ -133,9 +132,21 @@ void WsSession::handleMessage(size_t nread)
 
 void WsSession::handleWsFrame()
 {
+    // reject no mask
+    if (!m_frame.mask)
+    {
+        std::cerr << "websocket message no mask" << std::endl;
+        WS_CALLBACK(m_onErrorCb, shared_from_this(), static_cast<std::exception>(std::runtime_error("websocket message no mask")));
+        close();
+        return ;
+    }
+
     switch (m_frame.opcode)
     {
         case WS_PONG:
+            break;
+        case WS_PING:
+            sendPong();
             break;
         case WS_CLOSE:
             close();
@@ -154,8 +165,8 @@ lept_value WsSession::getJsonMessage()
     if (ret != LEPT_PARSE_OK)
     {
         std::cerr << "websocket frame json parse error" << std::endl;
+        json.set_null();
     }
-    json.set_null();
     return json;
 }
 
@@ -212,12 +223,12 @@ void WsSession::inter_send(WriteCtx* ctx, uint8_t opcode)
     {
         header.emplace_back(126 | mask);
         header.emplace_back(static_cast<uint8_t>(payload_len >> 8));
-        header.emplace_back(static_cast<uint8_t>(payload_len | 0xFF));
+        header.emplace_back(static_cast<uint8_t>(payload_len & 0xFF));
     }
     else
     {
-        header.push_back(127 | mask);
-        for (int i = 0;i < 8;i ++)
+        header.emplace_back(127 | mask);
+        for (int i = 7;i >= 0;i --)
         {
             header.emplace_back(static_cast<uint8_t>(payload_len >> (i * 8)));
         }
@@ -236,6 +247,7 @@ void WsSession::inter_send(WriteCtx* ctx, uint8_t opcode)
     }
 
     ctx->req.data = ctx;
+    ctx->m_owner = shared_from_this();
     uv_write(&ctx->req,
                 m_client,
                 ctx->m_buffers.data(),
@@ -244,9 +256,15 @@ void WsSession::inter_send(WriteCtx* ctx, uint8_t opcode)
     {
         if (status < 0)
         {
+            auto context = static_cast<WriteCtx*>(req->data);
             std::cerr << "websocket send err: " << uv_err_name(status) << std::endl;
+            auto ss = context->m_owner;
+            WS_CALLBACK(ss->m_onErrorCb, ss, static_cast<std::exception>(std::runtime_error("websocket send error")));
+            delete context;
+            ss->close();
         }
 
+        std::cout << "websocket send success" << std::endl;
         delete static_cast<WriteCtx*>(req->data);
     });
 }

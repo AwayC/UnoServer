@@ -28,7 +28,8 @@ namespace uno
         using SessionPtr = std::shared_ptr<Session>;
 
         Session(WsSessionPtr ws) :
-            m_last_save_time(std::chrono::system_clock::time_point::min())
+            m_last_save_time(std::chrono::system_clock::time_point::min()),
+            m_data(lept_value::object_t({{"room_id", -1}}))
         {
             m_wsSession = ws;
         }
@@ -139,7 +140,7 @@ namespace uno
         {
             m_nick = nick;
             m_summary = summary;
-            m_data = data;
+            m_data["room_id"] = data.contains_key("room_id") ? data["room_id"].get<int>() : -1;
         }
 
         //todo call(funcname, ...args)

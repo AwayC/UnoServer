@@ -13,7 +13,7 @@ namespace uno
         {
             if (m_sessions[i] == session)
             {
-                std::cout << "Session removed due to" << reason << std::endl;
+                std::cout << "Session removed due to " << reason << std::endl;
 
                 if (session->uid() != -1)
                 {
@@ -23,7 +23,7 @@ namespace uno
                 m_sessions[i] = m_sessions.back();
                 m_sessions.pop_back();
 
-                //todo: evtcenter.emit('logout', session, reason);
+                evtcenter.emit("logout", session, reason);
                 return ;
             }
         }
@@ -31,11 +31,14 @@ namespace uno
 
     void Ssmgr::accept(WsSessionPtr& socket)
     {
+        std::cout << "ssmgr accept new socket" << std::endl;
         auto ss = std::make_shared<Session>(socket);
 
         socket->onMessage([this, ss](WsSessionPtr socket)
         {
+            std::cout << "ssmgr onMessage: " << socket->getStrMessage() << std::endl;
             lept_value json = socket->getJsonMessage();
+            std::cout << (int)json.get_type() << " " << json.stringify() << std::endl;
 
             if (!json.is<lept_value::array_t>())
             {
@@ -45,14 +48,15 @@ namespace uno
 
             auto& args = json.get<lept_value::array_t>();
 
-            assert(args.size() < 2);
+            assert(!args.empty());
 
             try
             {
                 on_c2s_msg(ss, args);
             } catch (const std::exception& e)
             {
-
+                std::cout << "ssmgr call c2s msg error" << std::endl;
+                std::cout << e.what() << std::endl;
             }
 
         });
@@ -64,6 +68,7 @@ namespace uno
 
         socket->onClose([this, ss](const WsSessionPtr& socket)
         {
+            std::cout << "ssmgr socket on close" << std::endl;
             on_disconnect(ss, "close");
         });
 
@@ -75,7 +80,7 @@ namespace uno
         m_sessions.emplace_back(ss);
     }
 
-    void Ssmgr::on_c2s_msg(SessionPtr session, const Router::arg_t& args)
+    void Ssmgr::on_c2s_msg(SessionPtr session, Router::arg_t& args)
     {
         std::string funcname;
         try
@@ -93,9 +98,10 @@ namespace uno
 
         Router::arg_t newargs;
 
-        for (int i = 2;i < args.size();i ++)
+        for (int i = 1;i < args.size();i ++)
         {
             newargs.push_back(std::move(args[i]));
+            std::cout << lept_value::typeStr(newargs[i - 1].get_type()) << " " << newargs[i - 1].stringify() << std::endl;
         }
 
         Router::router().call_c2s(funcname, session, newargs);
