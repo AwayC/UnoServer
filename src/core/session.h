@@ -128,6 +128,7 @@ namespace uno
             m_uid = uid;
             m_name = name;
             m_email = email;
+
             if (m_on_attach)
             {
                 m_on_attach(shared_from_this());
@@ -157,6 +158,7 @@ namespace uno
 
             if (auto ws = m_wsSession.lock())
             {
+                std::cout << "session call: " << lv.stringify() << std::endl;
                 ws->send(lv);
             } else
             {

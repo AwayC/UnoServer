@@ -140,12 +140,11 @@
 #### s2c: 
 
 1. **lobby**
-  - `['login_rsp', ErrCode]`
+  - `['login_rsp', ErrCode, token, base_data]`
   - `['create_role_rsp', ErrCode]`
   - `['create_role_ntf']`
 2. **room**
   - `['create_room_rsp', ErrCode, room_snapshot]`
-  - `['login_rsp', ErrCode, token, base_data]`
   - `['room_event_ntf', ErrCode, room_id, sender, event, ...]`
   - `['enter_room_rsp', ErrCode, room_snapshot]`
   - `['leave_room_rsp', ErrCode]`
@@ -157,6 +156,6 @@
   - `['game_play_card_rsp', ErrCode]`
   - `['game_deal_card_rsp', ErrCode]`
   - `['game_report_no_uno_rsp', ErrCode]`
-  - `['get_room_list_rsp', room_list, session_count]`
+  - `['get_room_list_rsp', ErrCode, room_list, session_count]`
 3. **ssmgr**
   - `['logout_ntf', reason]`

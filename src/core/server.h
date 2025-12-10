@@ -96,7 +96,6 @@ namespace uno
                 auto task = self->m_loop_ctx.que.try_pop();
                 if (task != std::nullopt && task.value())
                 {
-                    std::cout << "handle a task" << std::endl;
                     task.value()();
                 }
             }

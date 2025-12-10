@@ -197,9 +197,9 @@ namespace uno
             }
         }
 
-        void round_flow(int uid, int stat)
+        void round_flow(int uid, lept_value::object_t stat)
         {
-            std::cout << "round flow for uid: " << uid << ", stat: " << stat << std::endl;
+            std::cout << "round flow for uid: " << uid << std::endl;
         }
     }
 

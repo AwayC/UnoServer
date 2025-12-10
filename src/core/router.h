@@ -157,7 +157,8 @@ namespace uno
 
             try
             {
-                std::cout << "call_c2s: " << funcname << std::endl;
+                lept_value json = lept_value::array_t(args);
+                std::cout << "call_c2s: " << funcname << " " << json.stringify() << std::endl;
                 c2s_funcs[funcname](std::move(session), args);
             } catch (const std::exception& e)
             {

@@ -72,7 +72,6 @@ namespace uno
 
             lept_value data = this->m_db.users_query_user(name);
 
-            std::cout << "data: " << data.stringify() << std::endl;
             int uid = data["uid"].get_integer();
             this->m_db.users_update_login_info(uid, ip);
 
@@ -82,7 +81,6 @@ namespace uno
                 {"username", data["username"].get_string()},
                 {"email", data["email"].get_string()}
             }, this->m_cfg["secret"].get_string(), 30);
-            std::cout << "token: " << token << std::endl;
             return std::make_pair(ErrCode::ok, token);
         };
 
@@ -196,9 +194,6 @@ namespace uno
 
     void Server::pageRegister(httpReq* req, httpRespPtr resp)
     {
-        std::cout << "http Register" << std::endl;
-        std::cout << "req body: " << req->body << std::endl;
-
         std::string ip;
         std::string argName, argPassword, argEmail;
         if (req->headers.find("x-forwarded-for") != req->headers.end())
@@ -210,7 +205,6 @@ namespace uno
             ip = req->ip;
         }
 
-        std::cout << "ip: " << ip << std::endl;
         try
         {
             lept_value body;
@@ -229,15 +223,9 @@ namespace uno
             });
             return ;
         }
-        std::cout << "name: " << argName << std::endl;
-        std::cout << "password: " << argPassword << std::endl;
-        std::cout << "email: " << argEmail << std::endl;
-
-        std::cout << argPassword.size() << std::endl;
 
         if (argName.length() > 16)
         {
-            std::cout << "name too long" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_name_too_long)},
                 {"msg", "Name too long"}
@@ -247,7 +235,6 @@ namespace uno
 
         if (argName.length() < 3)
         {
-            std::cout << "name too short" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_name_too_short)},
                 {"msg", "Name too short"}
@@ -257,7 +244,6 @@ namespace uno
 
         if (argPassword.length() > 32)
         {
-            std::cout << "password too long" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_password_too_long)},
                 {"msg", "Password too long"}
@@ -267,7 +253,6 @@ namespace uno
 
         if (argPassword.length() < 3)
         {
-            std::cout << "password too short" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_password_too_short)},
                 {"msg", "Password too short"}
@@ -277,7 +262,6 @@ namespace uno
 
         if (argEmail.length() > 100)
         {
-            std::cout << "email too long" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_email_invalid)},
                 {"msg", "Invalid email"}
@@ -286,7 +270,6 @@ namespace uno
         }
 
         if (!std::regex_match(argName, std::regex("^[A-Za-z0-9_]+$"))) {
-            std::cout << "name invalid" << std::endl;
             resp->sendJson({
                 {"code", static_cast<int>(ErrCode::api_name_invalid)},
                 {"msg", "Invalid name"}
@@ -322,7 +305,6 @@ namespace uno
             if (res.index() == 0)
             {
                 bool hasName = std::get<0>(res);
-                std::cout << "hasName: " << hasName << std::endl;
                 if (hasName)
                 {
                     resp->sendJson({
@@ -383,9 +365,6 @@ namespace uno
 
     void Server::pageLogin(httpReq* req, httpRespPtr resp)
     {
-        std::cout << "http Login" << std::endl;
-        std::cout << "req body: " << req->body << std::endl;
-
         std::string ip;
         std::string argName, argPassword;
 
@@ -422,9 +401,7 @@ namespace uno
             {
                 auto ref = std::get<std::pair<ErrCode, std::string>>(res);
                 code = ref.first;
-                std::cout << "code: " << static_cast<int>(code) << std::endl;
                 token = std::move(ref.second);
-                std::cout << "token: " << token << std::endl;
             } else
             {
                 std::cerr << "Unexpected error when login user, argName: " << argName << std::endl;
@@ -456,9 +433,6 @@ namespace uno
 
     void Server::pageUpdateEmail(httpReq* req, httpRespPtr resp)
     {
-        std::cout << "http UpdateEmail" << std::endl;
-        std::cout << "req body: " << req->body << std::endl;
-
         std::string argToken, argEmail;
 
         try
@@ -538,9 +512,6 @@ namespace uno
 
     void Server::pageUpdatePassword(httpReq* req, httpRespPtr resp)
     {
-        std::cout << "http UpdatePassword" << std::endl;
-        std::cout << "req body: " << req->body << std::endl;
-
         std::string argToken, argPassword;
         try
         {
@@ -616,7 +587,6 @@ namespace uno
     void Server::run()
     {
         std::cout << "server start" << std::endl;
-        std::cout << "start background thread" << std::endl;
 
         try
         {

@@ -71,14 +71,14 @@ namespace uno
             assert(player != room->players.end());
             for (auto& card : player->second.rest)
             {
-                my_cards.emplace_back(lept_value(card));
+                my_cards.emplace_back(card);
             }
         }
 
         lept_value::array_t seq;
         for (auto& u: room->seq)
         {
-            seq.emplace_back(lept_value(u));
+            seq.emplace_back(u);
         }
 
         ret["seq"] = lept_value(std::move(seq));
@@ -137,6 +137,7 @@ namespace uno
             room->dealer = room->last_win;
         } else
         {
+            // 2. 否则，随机抽取一名玩家
             room->dealer = helper::random_select(room->seq);
         }
 
@@ -211,8 +212,8 @@ namespace uno
         // 发送统计数据到lobby
         for (auto& [uid, player]: room->players)
         {
-            auto stat = room->stater.get_stat(uid);
-            CALL_S2S("round_flow", uid, room->stater.get_stat(uid));
+            const auto stat = room->stater.get_stat(uid);
+            CALL_S2S("round_flow", uid, stat.get_object());
         }
 
         // 展示分数面板
@@ -387,10 +388,12 @@ namespace uno
             }
         }
 
+        // 刷新游标
         room->cursor = cursor;
         return cursor;
     }
 
+    // 从牌堆取出一张牌，如果无可用牌，则重新洗牌，如果洗牌后也无牌，则返回-1
     card_t RoomManager::game_card_heap_deal(RoomPtr room)
     {
         if (room->heap.size() == 0)
@@ -409,6 +412,7 @@ namespace uno
         return ret;
     }
 
+    // 打出一张牌（同时完成状态转移和消息发送）
     bool RoomManager::game_player_card_play(RoomPtr room, int uid, card_t c,
         bool with_uno, int chg_color)
     {
@@ -419,6 +423,7 @@ namespace uno
         std::cout << "game_player_card_play: uid " << uid << ", card " << c
                 << ", with_uno " << with_uno << ", chg_color " << chg_color << std::endl;
 
+        // 检查是否有这个牌
         int index = -1;
         for (size_t i = 0;i < player.rest.size();i ++)
         {
@@ -524,7 +529,7 @@ namespace uno
         }
 
         // 如果无牌，则获胜（注意这里要重新判断）
-        if (player.rest.size() == 0)
+        if (player.rest.empty())
         {
             game_over(room, uid);
             return true;
@@ -718,9 +723,10 @@ namespace uno
                 // 如果上张是+4
                 if (last_func == card::FUNC_DRAW4)
                 {
+                    // 可以接任意+4
                     if (func == card::FUNC_DRAW4 && (color == last_color || color == card::COLOR_ALL))
-                        return false;
-                    return true;
+                        return true;
+                    return false;
                 }
 
                 std::cerr << "game_can_play_card: unexpected state, last " << room->last << ", last_func " << last_func << ", draw " << room->draw << std::endl;
@@ -914,7 +920,7 @@ namespace uno
             int threshold = 0;
             if (player.offline && (now - player.offline_time >= std::chrono::microseconds(PLAYER_AUTO_PLAY_OFFLINE_TIME)))
             {
-                threshold = TIMER_PLAYER_THINKING;
+                threshold = PLAYER_AUTO_PLAY_THINKING_TIME;
             }
 
             // 玩家托管逻辑
@@ -976,7 +982,7 @@ namespace uno
 
                     // 检查是否需UNO，给1/2几率没有UNO
                     bool with_uno = false;
-                    if (player.rest.size() == 2 && rand() % 2)
+                    if (player.rest.size() == 2 && random() % 2)
                         with_uno = true;
 
                     // 打选中的牌
@@ -1055,7 +1061,7 @@ namespace uno
         room->owner = uid;
         room->max_players = player_count;
         room->seq.push_back(uid);
-        room->curr_players = player_count;
+        room->curr_players = 1; // 房主
 
         m_rooms[id] = room;
 
@@ -1118,7 +1124,7 @@ namespace uno
             }
 
             auto room_it = m_rooms.find(room_id);
-            if (room_it == m_rooms.end() || room_it->second->players.contains(uid))
+            if (!(room_it != m_rooms.end() && room_it->second->players.contains(uid)))
             {
                 std::cerr << "enter_room_req: room or user not in, " << room_id << std::endl;
 
@@ -1140,7 +1146,7 @@ namespace uno
 
         // 第一次加入房间，进行检查
         auto room_it = m_rooms.find(room_id);
-        if (room_it != m_rooms.end())
+        if (room_it == m_rooms.end())
         {
             ss->call("enter_room_rsp", (int)ErrCode::api_room_not_found, nullptr);
             return ;
@@ -1165,7 +1171,7 @@ namespace uno
         if (room->players.contains(uid))
         {
             std::cout << "enter_room_req: player " << uid << " already in room " << room_id << std::endl;
-            assert(data["room_id"].is<int>() && data["room_id"].get_integer() == room_id);
+            // assert(data["room_id"].is<int>() && data["room_id"].get_integer() == room_id);
             ss->call("enter_room_rsp", (int)ErrCode::api_invalid_call, nullptr);
             return ;
         }
@@ -1333,7 +1339,7 @@ namespace uno
 
         // 获取房间 & 检查状况
         auto room_it = m_rooms.find(room_id);
-        if (room_it != m_rooms.end())
+        if (room_it == m_rooms.end())
         {
             std::cerr << "shuffle_room_seats_rsp: room not found, room_id: " << room_id << std::endl;
             ss->call("shuffle_room_seats_rsp", (int)ErrCode::api_invalid_call);
@@ -1414,7 +1420,7 @@ namespace uno
 
         // 获取房间 & 检查状况
         auto room_it = m_rooms.find(room_id);
-        if (room_it != m_rooms.end())
+        if (room_it == m_rooms.end())
         {
             std::cerr << "room_use_voice_rsp: room not found, room_id: " << room_id << std::endl;
             ss->call("room_use_voice_rsp", (int)ErrCode::api_invalid_call);
@@ -1527,9 +1533,9 @@ namespace uno
         ss->call("room_kickout_player_rsp", (int)ErrCode::ok);
     }
 
-    static void handle_start_game_req(SessionPtr ss, const std::string& room_name, int player_count)
+    static void handle_start_game_req(SessionPtr ss, int room_id)
     {
-        RoomManager::instance().create_room_req(ss, room_name, player_count);
+        RoomManager::instance().start_game_req(ss, room_id);
     }
     static Router::Registerer reg_start_game_req(
         Router::Registerer::c2s,
@@ -1538,6 +1544,7 @@ namespace uno
     );
     void RoomManager::start_game_req(SessionPtr ss, int room_id)
     {
+        std::cout << "start_game_req: room_id: " << room_id << std::endl;
         int uid = ss->uid();
         auto& data = ss->data().get_object();
 
@@ -1661,9 +1668,9 @@ namespace uno
         ss->call("game_play_card_rsp", (int)ErrCode::ok);
     }
 
-    static void handle_game_deal_card_req(SessionPtr ss, const std::string& room_name, int player_count)
+    static void handle_game_deal_card_req(SessionPtr ss, int room_id)
     {
-        RoomManager::instance().create_room_req(ss, room_name, player_count);
+        RoomManager::instance().game_deal_card_req(ss, room_id);
     }
     static Router::Registerer reg_game_deal_card_req(
         Router::Registerer::c2s,
@@ -1789,12 +1796,13 @@ namespace uno
                 {"title", room->title},
                 {"curr_players", room->curr_players},
                 {"max_players", room->max_players},
-                {"playing ", room->state != Room::State::idle},
+                {"playing", room->state != Room::State::idle},
                 {"joinable", room->state == Room::State::idle && room->curr_players <= room->max_players}
             });
         }
 
-        ss->call("get_room_list_rsp", ret, (int)SSMGR.get_session_count());
+        std::cout << "session cnt " << SSMGR.get_session_count() << std::endl;
+        ss->call("get_room_list_rsp", (int)ErrCode::ok, ret, (int)SSMGR.get_session_count());
     }
 
 

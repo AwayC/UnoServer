@@ -6,6 +6,32 @@
 #include <cassert>
 #include <utility>
 
+/**
+ * 卡片定义
+ *   低3位表示颜色
+ *     0  - 万能
+ *     1  - 红色
+ *     2  - 黄色
+ *     3  - 蓝色
+ *     4  - 绿色
+ *   低4~7位表示功能
+ *     0  - 无功能，仅用于表示纯某种花色的牌
+ *     1  - 0
+ *     2  - 1
+ *     3  - 2
+ *     4  - 3
+ *     5  - 4
+ *     6  - 5
+ *     7  - 6
+ *     8  - 7
+ *     9  - 8
+ *     10 - 9
+ *     11 - 跳过
+ *     12 - 反向
+ *     13 - +2
+ *     14 - +4
+ */
+
 namespace uno {
 
     using card_t = int;
@@ -72,6 +98,9 @@ namespace uno {
             return (c & 7) | ((f & 15) << 3);
         }
 
+        /**
+         * ret : { color, func }
+         */
         inline std::pair<int, int> decompose_card(card_t c)
         {
             int color = get_color(c);
@@ -86,7 +115,7 @@ namespace uno {
             {
                 return false;
             }
-            int func = get_func(c);
+            int func = (c >> 3) & 15;
             if (!is_valid_func(func))
             {
                 return false;

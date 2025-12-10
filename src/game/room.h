@@ -239,7 +239,7 @@ namespace uno
         using RoomMap = std::unordered_map<int, RoomPtr>;
 
         RoomMap m_rooms;
-        int m_next_room_id;
+        int m_next_room_id; // room_id > 0
 
         int generateIDBaseTime()
         {

@@ -31,7 +31,6 @@ namespace uno
 
     void Ssmgr::accept(WsSessionPtr& socket)
     {
-        std::cout << "ssmgr accept new socket" << std::endl;
         auto ss = std::make_shared<Session>(socket);
 
         socket->onMessage([this, ss](WsSessionPtr socket)
@@ -82,18 +81,11 @@ namespace uno
 
     void Ssmgr::on_c2s_msg(SessionPtr session, Router::arg_t& args)
     {
-        std::string funcname;
-        try
+        std::string funcname = args[0].get_string();
+        if (!Router::router().contain_c2s(funcname))
         {
-            funcname = args[0].get_string();
-            if (!Router::router().contain_c2s(funcname))
-            {
-                std::cerr << "Undefined msg: " << funcname << " uid: " << session->uid() << std::endl;
-                return ;
-            }
-        } catch (std::exception& e)
-        {
-            std::cerr << "c2s funcname error" << std::endl;
+            std::cerr << "Undefined msg: " << funcname << " uid: " << session->uid() << std::endl;
+            return ;
         }
 
         Router::arg_t newargs;

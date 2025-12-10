@@ -10,7 +10,7 @@
 #include <chrono>
 
 #define SESSION_ITER_COUNT    10
-constexpr auto SESSION_SAVE_DURATION = std::chrono::seconds(5 * 60 * 1000);
+constexpr auto SESSION_SAVE_DURATION = std::chrono::microseconds(5 * 60 * 1000);
 
 namespace uno
 {
@@ -19,7 +19,8 @@ namespace uno
     public:
         static Ssmgr& instance()
         {
-            static Ssmgr ssmgr; return ssmgr;
+            static Ssmgr ssmgr;
+            return ssmgr;
         }
 
         void accept(WsSessionPtr& socket);
@@ -58,7 +59,7 @@ namespace uno
 
         void update_session(SessionPtr ss, const std::chrono::system_clock::time_point& now)
         {
-            //todo
+            // 如果会话已经登录并且被写入了脏数据，则发起写刷新数据库
             auto time_since_last_save = now - ss->last_save_time();
 
             if (ss->state() >= Session::State::logged && ss->dirty()
@@ -74,6 +75,7 @@ namespace uno
 
         void update(const std::chrono::system_clock::time_point& now)
         {
+            // 每10次tick完成所有玩家的遍历
             if (!m_sessions.empty())
             {
                 if (m_iter >= m_sessions.size())
@@ -85,7 +87,7 @@ namespace uno
                 size_t cnt = std::max((size_t)1, m_sessions.size() / SESSION_ITER_COUNT);
                 for (size_t i = 0;i < cnt; ++ i)
                 {
-                    auto& ss = m_sessions[i];
+                    auto& ss = m_sessions[m_iter];
                     assert(ss);
                     try
                     {
