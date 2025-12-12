@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 add_subdirectory(third-party/sqlite3)
-add_subdirectory(third-party/MyWebsocket)
+add_subdirectory(third-party/MyWebSocket)
 
 add_library(UnoServer
         src/core/ssmgr.cpp
@@ -19,7 +19,7 @@ add_library(UnoServer
         src/core/background.cpp
         src/core/config.h
         src/core/config.cpp
-        src/core/eventemitter.h
+        src/core/EventEmitter.h
 
         src/game/card.h
         src/game/constants.h
