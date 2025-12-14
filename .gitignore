@@ -22,3 +22,7 @@ package-lock.json
 *.db3
 
 cnt_line.sh
+
+static
+
+gen_secret.sh

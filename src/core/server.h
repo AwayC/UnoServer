@@ -77,7 +77,7 @@ namespace uno
 
         void onUpdate();
 
-        void pageIndex(httpReq* req, httpRespPtr resp);
+        void pageStatic(httpReq* req, httpRespPtr resp);
 
         void pageRegister(httpReq* req, httpRespPtr resp);
 

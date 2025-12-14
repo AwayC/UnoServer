@@ -25,7 +25,7 @@ namespace uno
 {
     Server::Server(lept_value& cfg) :
                 m_cfg(cfg),
-                m_staticDir("/../static/"),
+                m_staticDir("./static"),
                 m_httpSvr(HttpServer::create( UNO_SERVER_IP,
                     cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
                 m_wsSvr(m_httpSvr),
@@ -89,6 +89,11 @@ namespace uno
 
     void Server::registerRouter()
     {
+        m_httpSvr->get("/(.*)", [this](httpReq* req, httpRespPtr resp)
+        {
+            pageStatic(req, std::move(resp));
+        });
+
         m_httpSvr->post("/api/register", [this](httpReq* req,
                                             httpRespPtr resp)
         {
@@ -106,6 +111,7 @@ namespace uno
         {
             pageUpdatePassword(req, std::move(resp));
         });
+
 
         this->m_wsSvr.onConnect([this](WsSessionPtr ss)
         {
@@ -187,10 +193,42 @@ namespace uno
         }
     }
 
-    void Server::pageIndex(httpReq* req, httpRespPtr resp)
+    void Server::pageStatic(httpReq* req, httpRespPtr resp)
     {
-        resp->sendFile(m_staticDir + "index.html");
+        std::string& path = req->url;
+        if (path == "/")
+        {
+            path = "/index.html";
+        }
+
+        std::cout << "request path: " << path << std::endl;
+        // 移除查询参数
+        size_t query_pos = path.find('?');
+        if (query_pos != std::string::npos) {
+            path = path.substr(0, query_pos);
+        }
+
+        if (path.find("..") != std::string::npos) {
+            std::cerr << "Forbidden path: " << path << std::endl;
+            resp->setStatus(httpStatus::FORBIDDEN);
+            resp->sendStr("403 Forbidden");
+            return;
+        }
+
+        std::string static_path = m_staticDir + path;
+
+        if (!std::filesystem::exists(static_path) || std::filesystem::is_directory(static_path)) {
+            std::cout << "not found: " << static_path << std::endl;
+            resp->setStatus(httpStatus::NOT_FOUND);
+            resp->sendStr("404 Not Found");
+            return;
+        }
+        std::cout << static_path << std::endl;
+
+        resp->sendFile(static_path);
+        std::cout << "send file: " << static_path << std::endl;
     }
+
 
     void Server::pageRegister(httpReq* req, httpRespPtr resp)
     {
