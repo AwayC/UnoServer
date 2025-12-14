@@ -4,6 +4,7 @@
 
 #include "db.h"
 #include "../util/ssl.h"
+#include <algorithm>
 
 namespace uno
 {

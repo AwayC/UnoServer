@@ -7,7 +7,9 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <optional>
 #include <condition_variable>
+#include <exception>
 
 namespace uno {
 

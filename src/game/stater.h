@@ -5,6 +5,7 @@
 #include <map>
 #include "constants.h"
 #include <memory>
+#include <unordered_map>
 
 #include "leptjson.h"
 

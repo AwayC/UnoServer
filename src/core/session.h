@@ -7,6 +7,7 @@
 #include "httpserver.h"
 #include "WebSocket.h"
 #include <cassert>
+#include <memory>
 #include "leptjson.h"
 #include "types.h"
 

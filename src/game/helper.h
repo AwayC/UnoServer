@@ -6,12 +6,13 @@
 #include <vector>
 #include <random>
 #include <cassert>
+#include <algorithm>
 
 namespace uno
 {
     namespace helper
     {
-        static std::mt19937& get_random_engine() {
+        inline std::mt19937& get_random_engine() {
             static std::random_device rd;
             static std::mt19937 gen(rd());
             return gen;
