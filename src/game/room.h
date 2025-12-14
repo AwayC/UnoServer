@@ -158,6 +158,8 @@ namespace uno
         void get_room_list_req(SessionPtr ss);
 
     private:
+        using RoomMap = std::unordered_map<int, RoomPtr>;
+
         template<typename... Args>
         void send_event(RoomPtr room, int uid, int sender, const std::string& event, Args&&... args)
         {
@@ -216,9 +218,9 @@ namespace uno
 
         void game_over(RoomPtr room, int uid);
 
-        void game_dismiss(RoomPtr room);
+        RoomMap::iterator game_dismiss(RoomMap::iterator room_it);
 
-        void game_player_leave(RoomPtr room, int uid, player_left_reason reason);
+        Room::PlayerMap::iterator game_player_leave(RoomPtr room, int uid, player_left_reason reason);
 
         int game_cursor_move(RoomPtr room, int base, int step);
 
@@ -232,11 +234,19 @@ namespace uno
 
         bool game_can_play_card(RoomPtr room, card_t c, bool ahead);
 
-        void game_update(RoomPtr room, time_point now);
+        RoomMap::iterator game_update(RoomMap::iterator room_it, time_point now);
 
+        // 如果没有玩家了，清理房间, 必须是存在的room
+        RoomMap::iterator clean_room(RoomMap::iterator room_it)
+        {
+            if (room_it->second->curr_players < 0)
+            {
+                return m_rooms.erase(room_it);
+            }
 
+            return ++room_it;
+        }
 
-        using RoomMap = std::unordered_map<int, RoomPtr>;
 
         RoomMap m_rooms;
         int m_next_room_id; // room_id > 0

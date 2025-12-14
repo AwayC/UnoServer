@@ -20,8 +20,8 @@ constexpr int PUNISH_FOR_BAD_UNO = 2; // 乱喊UNO罚两张
 constexpr int PUNISH_FOR_LAST_FUNC_CARD = 2; //以功能牌结尾，罚两张
 constexpr int PUNISH_FOR_NO_UNO = 2; // 没有喊UNO罚牌
 
-constexpr int PLAYER_AUTO_TICK_OFFLINE_TIME = 1 * 60 * 100; // 超过1分钟自动踢出房间
-constexpr int PLAYER_AUTO_PLAY_OFFLINE_TIME = 1 * 60 * 100; // 超过1分钟自动托管
+constexpr int PLAYER_AUTO_TICK_OFFLINE_TIME = 1 * 60 * 1000; // 超过1分钟自动踢出房间
+constexpr int PLAYER_AUTO_PLAY_OFFLINE_TIME = 1 * 60 * 1000; // 超过1分钟自动托管
 constexpr int PLAYER_AUTO_PLAY_THINKING_TIME = TIMER_PLAYER_THINKING * 0.85; // 自动托管时减少思考时间
 
 constexpr int OWNER_UPDATE_SEAT_INTERVAL = 10 * 1000; // 允许房主重排座位的倒计时
@@ -222,8 +222,9 @@ namespace uno
                 uid, room->stater.get_winner_stealer());
     }
 
-    void RoomManager::game_dismiss(RoomPtr room)
+    RoomManager::RoomMap::iterator RoomManager::game_dismiss(RoomManager::RoomMap::iterator room_it)
     {
+        auto room = room_it->second;
         // 状态变动
         room->last_win = -1;
         room->last_direction = room->direction;
@@ -262,14 +263,16 @@ namespace uno
         }
 
         // 删除房间
-        m_rooms.erase(room->id);
+        auto ret = m_rooms.erase(room_it);
 
         // 通知玩家房间解散
         broadcast_event(room, -1, "game_dismiss");
+        return ret;
     }
 
-    void RoomManager::game_player_leave(RoomPtr room, int uid, player_left_reason reason)
+    Room::PlayerMap::iterator RoomManager::game_player_leave(RoomPtr room, int uid, player_left_reason reason)
     {
+        std::cout << "game_player_leave: uid: " << uid << ", reason: " << (int)reason << std::endl;
         auto it = room->players.find(uid);
         assert(it != room->players.end());
         auto& player = it->second;
@@ -318,14 +321,13 @@ namespace uno
                 break;
             }
         }
-        room->players.erase(uid);
+        auto next_it = room->players.erase(it);
         room->curr_players --;
 
         // 如果房间无人，则解散
         if (room->curr_players <= 0)
         {
-            m_rooms.erase(room->id);
-            return;
+            return next_it;
         }
 
         // 如果是房主，则转交给第一位
@@ -349,12 +351,14 @@ namespace uno
         if (room->state == Room::State::playing && room->curr_players == 1)
         {
             game_over(room, room->seq[0]);
-            return ;
+            return next_it;
         }
 
         // 通知所有人刷新状态
         broadcast_event(room, -1, "thinking", room->seq[room->cursor], room->last,
             room->last_chg_color, room->direction, room->draw, room->last_can_report, room->can_play_ahead);
+
+        return next_it;
     }
 
     int RoomManager::game_cursor_move(RoomPtr room, int base, int step)
@@ -745,21 +749,28 @@ namespace uno
         }
     }
 
-    void RoomManager::game_update(RoomPtr room, time_point now)
+    RoomManager::RoomMap::iterator RoomManager::game_update(RoomMap::iterator room_it, time_point now)
     {
+        auto room = room_it->second;
         if (room->state == Room::State::idle)
         {
             // 如果玩家离线时间超过1分钟，则直接从房间踢出
-            for (auto& [uid, player] : room->players)
+            auto player_it = room->players.begin();
+            while (player_it != room->players.end())
             {
+                auto& player = player_it->second;
+                auto uid = player_it->first;
                 if (player.offline && (now - player.offline_time >= std::chrono::microseconds(PLAYER_AUTO_TICK_OFFLINE_TIME)))
                 {
                     std::cout << "game_update player kick cause timeout, now " << now << ", offline_time " <<  player.offline_time << std::endl;
-                    game_player_leave(room, uid, player_left_reason::offline_kick);
+                    player_it = game_player_leave(room, uid, player_left_reason::offline_kick);
+                } else
+                {
+                    ++player_it;
                 }
-
-                return ;
             }
+
+            return clean_room(room_it);
         }
 
         assert(room->state == Room::State::playing);
@@ -991,6 +1002,8 @@ namespace uno
                 }
             }
         }
+
+        return ++room_it;
     }
 
     /*
@@ -1246,6 +1259,10 @@ namespace uno
         }
 
         game_player_leave(room, uid, player_left_reason::normal);
+        if (room->curr_players <= 0)
+        {
+            m_rooms.erase(room_it);
+        }
 
         // 清空玩家状态
         data["room_id"] = -1;
@@ -1528,6 +1545,7 @@ namespace uno
 
         // 房间内逻辑
         game_player_leave(room, be_kicked, player_left_reason::kicked_by_owner);
+        clean_room(room_it);
 
         // 回包
         ss->call("room_kickout_player_rsp", (int)ErrCode::ok);
@@ -1811,17 +1829,18 @@ namespace uno
      */
     void RoomManager::update(time_point now)
     {
-        for (auto& [room_id, room] : m_rooms)
+        auto room_it = m_rooms.begin();
+        while (room_it != m_rooms.end())
         {
             try
             {
-                game_update(room, now);
+                room_it = game_update(room_it, now);
             } catch (std::exception& e)
             {
                 // 强行解除更新失败的游戏
-                std::cerr << "update: update room error, room_id " << room_id << std::endl;
+                std::cerr << "update: update room error, room_id " << room_it->first << std::endl;
                 std::cerr << e.what() << std::endl;
-                game_dismiss(room);
+                room_it = game_dismiss(room_it);
             }
         }
     }

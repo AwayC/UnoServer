@@ -17,7 +17,7 @@
 
 #define UNO_DB_PATH "uno_game.db3"
 #define UNO_SERVER_PORT 8081
-#define UNO_SERVER_IP "127.0.0.1"
+#define UNO_SERVER_IP "0.0.0.0"
 
 using HttpServerPtr = std::shared_ptr<HttpServer>;
 
