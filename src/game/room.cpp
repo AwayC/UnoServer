@@ -707,7 +707,7 @@ namespace uno
                         return false;
                     // 如果是+2罚牌，则可以跟+4，否则只能跟+4
                     // +2后跟王牌+2的逻辑属于相同牌规则，之前判断过了
-                    if (last_func == card::FUNC_DRAW2 && func == card::FUNC_DRAW4)
+                    if (last_func == card::FUNC_CHGCOLOR && func == card::FUNC_DRAW4)
                         return true;
                     return false;  // +4后跟+4的情况属于相同牌规则，之前判断过了
                 }
@@ -728,7 +728,7 @@ namespace uno
                 if (last_func == card::FUNC_DRAW4)
                 {
                     // 可以接任意+4
-                    if (func == card::FUNC_DRAW4 && (color == last_color || color == card::COLOR_ALL))
+                    if (func == card::FUNC_DRAW4)
                         return true;
                     return false;
                 }

@@ -77,7 +77,6 @@ namespace uno
                                         dbResultCb<bool> cb)
     {
         std::cout << "db users_has_username" << std::endl;
-        std::string name = trim_and_lower(username);
         std::function<bool()> task = [this, username]()
         {
             return users_has_username(username);
@@ -214,7 +213,7 @@ namespace uno
         try
         {
             SQLite::Statement query(m_db, R"(SELECT password, salt FROM users WHERE username = ?)");
-            query.bind(1, username);
+            query.bind(1, name);
             if (query.executeStep())
             {
                 hashed = query.getColumn(0).getString();

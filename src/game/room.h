@@ -239,7 +239,7 @@ namespace uno
         // 如果没有玩家了，清理房间, 必须是存在的room
         RoomMap::iterator clean_room(RoomMap::iterator room_it)
         {
-            if (room_it->second->curr_players < 0)
+            if (room_it->second->curr_players <= 0)
             {
                 return m_rooms.erase(room_it);
             }
