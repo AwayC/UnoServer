@@ -296,8 +296,7 @@ namespace uno
                 }
 
                 // 找到玩家，设置上线
-                player->second.offline = true;
-                player->second.offline_time = ROOM_NOW;
+                player->second.offline = false;
 
                 std::cout << "login: broadcast online event for uid " << uid << std::endl;
                 broadcast_event(room->second, uid, "player_online");

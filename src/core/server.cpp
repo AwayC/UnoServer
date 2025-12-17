@@ -26,7 +26,7 @@ namespace uno
     Server::Server(lept_value& cfg) :
                 m_cfg(cfg),
                 m_staticDir("./static"),
-                m_httpSvr(HttpServer::create( UNO_SERVER_IP,
+                m_httpSvr(HttpServer::create( cfg.contains_key("ip") ? cfg["ip"].get<std::string>() : UNO_SERVER_IP,
                     cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
                 m_wsSvr(m_httpSvr),
                 m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
@@ -121,7 +121,7 @@ namespace uno
 
     void Server::startUpdateTimer()
     {
-        uv_timer_init(uv_default_loop(), &m_updateTimer);
+        uv_timer_init(m_loop_ctx.loop, &m_updateTimer);
         m_updateTimer.data = this;
         uv_timer_start(&m_updateTimer, [](uv_timer_t* handle)
         {

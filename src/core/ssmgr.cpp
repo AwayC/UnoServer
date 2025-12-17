@@ -37,11 +37,12 @@ namespace uno
         {
             std::cout << "ssmgr onMessage: " << socket->getStrMessage() << std::endl;
             lept_value json = socket->getJsonMessage();
-            std::cout << (int)json.get_type() << " " << json.stringify() << std::endl;
+            // std::cout << (int)json.get_type() << " " << json.stringify() << std::endl;
 
             if (!json.is<lept_value::array_t>())
             {
                 on_error(ss, std::runtime_error("receive msg type is not array"));
+                socket->close();
                 return;
             }
 
