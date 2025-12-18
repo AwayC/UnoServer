@@ -76,11 +76,12 @@ namespace uno
             this->m_db.users_update_login_info(uid, ip);
 
             //返回 jwt
-            std::string token = JwtUtil::sign({
-                {"uid", uid},
-                {"username", data["username"].get_string()},
-                {"email", data["email"].get_string()}
-            }, this->m_cfg["secret"].get_string(), 30);
+            lept_value info;
+            info.set_object({});
+            info["uid"] = uid;
+            info["username"] = data["username"].get_string();
+            info["email"] = data["email"].get_string();
+            std::string token = JwtUtil::sign(info, this->m_cfg["secret"].get_string(), 30);
             return std::make_pair(ErrCode::ok, token);
         };
 

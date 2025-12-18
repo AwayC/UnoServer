@@ -153,12 +153,14 @@ namespace uno
 
             // 刷新token
             std::cout << "lobby::load_role_rsp sign token" << std::endl;
-            std::string token = JwtUtil::sign({
-                {"uid", uid},
-                {"username", ss->name()},
-                {"email", ss->email()}
-            }, g_config["secret"].get_string(), 12 * 60 * 60);
+            lept_value info;
+            info.set_object({});
+            info["uid"] = uid;
+            info["username"] = ss->name();
+            info["email"] = ss->email();
+            std::string token = JwtUtil::sign(info, g_config["secret"].get_string(), 12 * 60 * 60);
             std::cout << "lobby::load_role_rsp token: " << token << std::endl;
+
             ss->call("login_rsp", static_cast<int>(ErrCode::ok), token, get_base_data(ss));
         }
 
