@@ -31,30 +31,31 @@ namespace uno
 {
     lept_value RoomManager::get_snapshot(RoomPtr room, int uid)
     {
-        lept_value ret = {
-#define KEY_VAL_INT(val) {#val, (int)room->val}
-#define KEY_VAL_STR(val) {#val, room->val}
+        lept_value ret;
+        ret.set_object({});
+#define KEY_VAL_INT(val) ret[#val] = (int)room->val
+#define KEY_VAL_STR(val) ret[#val] = room->val
 
-            KEY_VAL_INT(id),
-            KEY_VAL_INT(state),
-            KEY_VAL_STR(title),
-            KEY_VAL_INT(owner),
-            KEY_VAL_INT(max_players),
-            KEY_VAL_INT(curr_players),
-            KEY_VAL_INT(last_win),
-            KEY_VAL_INT(game_state),
-            KEY_VAL_INT(cursor),
-            KEY_VAL_INT(direction),
-            KEY_VAL_INT(dealer),
-            KEY_VAL_INT(timer),
-            KEY_VAL_INT(last),
-            KEY_VAL_INT(last_chg_color),
-            KEY_VAL_INT(draw),
-            KEY_VAL_INT(last_can_report),
-            KEY_VAL_INT(can_play_ahead),
+            KEY_VAL_INT(id);
+            KEY_VAL_INT(state);
+            KEY_VAL_STR(title);
+            KEY_VAL_INT(owner);
+            KEY_VAL_INT(max_players);
+            KEY_VAL_INT(curr_players);
+            KEY_VAL_INT(last_win);
+            KEY_VAL_INT(game_state);
+            KEY_VAL_INT(cursor);
+            KEY_VAL_INT(direction);
+            KEY_VAL_INT(dealer);
+            KEY_VAL_INT(timer);
+            KEY_VAL_INT(last);
+            KEY_VAL_INT(last_chg_color);
+            KEY_VAL_INT(draw);
+            KEY_VAL_INT(last_can_report);
+            KEY_VAL_INT(can_play_ahead);
 
 #undef KEY_VAL_INT
-        };
+#undef KEY_VAL_STR
 
         // 玩家简化数据
         lept_value::object_t players;
@@ -94,13 +95,13 @@ namespace uno
         assert(it != room->players.end());
 
         auto& player = it->second;
-        lept_value ret = {
-            {"nick", player.nick},
-            {"email", player.email},
-            {"rest_count", (int)player.rest.size()},
-            {"ready", player.ready},
-            {"offline", player.offline},
-        };
+        lept_value ret;
+        ret.set_object({});
+        ret["nick"] = player.nick;
+        ret["email"] = player.email;
+        ret["rest_count"] = (int)player.rest.size();
+        ret["ready"] = player.ready;
+        ret["offline"] = player.offline;
 
         return ret;
     }
@@ -1809,14 +1810,16 @@ namespace uno
         lept_value::array_t ret;
         for (auto& [room_id, room] : m_rooms)
         {
-            ret.emplace_back(lept_value{
-                {"id", room_id},
-                {"title", room->title},
-                {"curr_players", room->curr_players},
-                {"max_players", room->max_players},
-                {"playing", room->state != Room::State::idle},
-                {"joinable", room->state == Room::State::idle && room->curr_players <= room->max_players}
-            });
+            lept_value tmp;
+            tmp.set_object({});
+            tmp["id"] = room_id;
+            tmp["title"] = room->title;
+            tmp["curr_players"] = room->curr_players;
+            tmp["max_players"] = room->max_players;
+            tmp["playing"] = room->state != Room::State::playing;
+            tmp["joinable"] = room->state == Room::State::idle && room->curr_players <= room->max_players;
+
+            ret.emplace_back(tmp);
         }
 
         std::cout << "session cnt " << SSMGR.get_session_count() << std::endl;

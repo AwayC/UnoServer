@@ -72,24 +72,24 @@ namespace uno
     {
         auto stat = m_round_stat[uid];
 
-#define KEY_VAL(key)  {#key, stat.key}
-        lept_value ret = {
-            KEY_VAL(game_count),
-            KEY_VAL(total_draw),
-            KEY_VAL(draw_by_sys),
-            KEY_VAL(draw_by_report),
-            KEY_VAL(total_play),
-            KEY_VAL(play_ahead),
-            KEY_VAL(report),
-            KEY_VAL(be_reported),
-            KEY_VAL(uno),
-            KEY_VAL(forgot_uno),
-            KEY_VAL(win),
-            KEY_VAL(sp_forbid_others_uno),
-            KEY_VAL(sp_cause_others_win),
-            KEY_VAL(sp_draw_others_eat_by_self),
-            KEY_VAL(sp_draw_by_others_max)
-        };
+#define KEY_VAL(key)  ret[#key] = stat.key
+        lept_value ret;
+        ret.set_object({});
+        KEY_VAL(game_count);
+        KEY_VAL(total_draw);
+        KEY_VAL(draw_by_sys);
+        KEY_VAL(draw_by_report);
+        KEY_VAL(total_play);
+        KEY_VAL(play_ahead);
+        KEY_VAL(report);
+        KEY_VAL(be_reported);
+        KEY_VAL(uno);
+        KEY_VAL(forgot_uno);
+        KEY_VAL(win);
+        KEY_VAL(sp_forbid_others_uno);
+        KEY_VAL(sp_cause_others_win);
+        KEY_VAL(sp_draw_others_eat_by_self);
+        KEY_VAL(sp_draw_by_others_max);
 #undef KEY_VAL
 
         return ret;
@@ -100,12 +100,13 @@ namespace uno
         lept_value::array_t ret;
         for (auto& stat : m_display_stat)
         {
-            ret.emplace_back(lept_value{
-                {"id", stat.id},
-                {"score", stat.score},
-                {"counter", stat.counter},
-                {"uid", stat.uid},
-            });
+            lept_value tmp;
+            tmp.set_object({});
+            tmp["id"] = stat.id;
+            tmp["score"] = stat.score;
+            tmp["counter"] = stat.counter;
+            tmp["uid"] = stat.uid;
+            ret.emplace_back(tmp);
         }
 
         return lept_value(std::move(ret));

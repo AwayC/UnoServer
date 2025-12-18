@@ -250,17 +250,27 @@ namespace uno
         {
             SQLite::Statement query(m_db, R"(SELECT uid, email, register_time, last_login_time, last_login_ip FROM users WHERE username = ?)");
             query.bind(1, name);
+
             if (query.executeStep())
             {
-               return {
-                    {"uid", query.getColumn(0).getInt()},
-                    {"username", name},
-                    {"email", query.getColumn(1).getString()},
-                    {"register_time", query.getColumn(2).getInt()},
-                    {"last_login_time", query.getColumn(3).getInt()},
-                    {"last_login_ip", query.getColumn(4).getString()}
-                };
+                int uid = query.getColumn(0).getInt();
+                std::string email = query.getColumn(1).getString();
+                std::string register_time = query.getColumn(2).getString();
+                std::string last_login_time = query.getColumn(3).getString();
+                std::string last_login_ip = query.getColumn(4).getString();
+
+
+                lept_value ret;
+                ret.set_object({});
+                ret["uid"] = uid;
+                ret["username"] = std::move(name);
+                ret["email"] = std::move(email);
+                ret["register_time"] = std::move(register_time);
+                ret["last_login_time"] = std::move(last_login_time);
+                ret["last_login_ip"] = std::move(last_login_ip);
+               return ret;
             }
+
             return {};
         } catch (std::exception& e)
         {
@@ -416,17 +426,21 @@ namespace uno
                 lept_value summary, data;
                 summary.parse(query.getColumn(2).getString());
                 data.parse(query.getColumn(3).getString());
+                std::string nickname = query.getColumn(0).getString();
+                int creation_time = query.getColumn(1).getInt();
 
                 assert(summary.is<lept_value::object_t>());
                 assert(data.is<lept_value::object_t>());
 
-                return {
-                            {"uid", uid},
-                            {"nickname", query.getColumn(0).getString()},
-                            {"creation_time", query.getColumn(1).getInt()},
-                            {"summary", summary},
-                            {"data", data},
-                        };
+                lept_value ret;
+                ret.set_object({});
+                ret["uid"] = uid;
+                ret["nickname"] = std::move(nickname);
+                ret["creation_time"] = creation_time;
+                ret["data"] = data;
+                ret["summary"] = summary;
+
+                return ret;
             }
 
             return {};

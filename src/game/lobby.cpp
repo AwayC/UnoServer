@@ -12,14 +12,14 @@ namespace uno
 #define SSMGR  Ssmgr::instance()
     static lept_value::object_t get_base_data(SessionPtr ss)
     {
-        return {
-            {"uid", ss->uid()},
-            {"name", ss->name()},
-            {"nick", ss->nick()},
-            {"email", ss->email()},
+        lept_value::object_t ret;
+        ret["uid"] = ss->uid();
+        ret["name"] = ss->name();
+        ret["nick"] = ss->nick();
+        ret["email"] = ss->email();
 
-            {"room_id", ss->data()["room_id"].get_integer()},
-        };
+        ret["room_id"] = ss->data()["room_id"].get_integer();
+        return ret;
     }
 
     namespace C2S
