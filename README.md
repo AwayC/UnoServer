@@ -24,6 +24,20 @@
 *   Git
 *   OpenSSL (依赖)
 
+安装 OpenSSL
+Linux:
+```bash
+sudo apt-get install libssl-dev
+# 检查安装是否成功
+openssl --version
+```
+MacOS:
+```bash
+brew install openssl
+# 检查安装是否成功
+openssl --version
+```
+
 ### 构建步骤
 
 ```bash
