@@ -1,6 +1,6 @@
 # Shining UNO Server
 <p align="center">
-  <img src="./assets/logo.png" alt="Shining UNO Logo"/>
+  <img src="./assets/logo.jpg" alt="Shining UNO Logo"/>
 </p>
 
 <a name="chinese"></a>
