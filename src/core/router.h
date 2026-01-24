@@ -14,6 +14,7 @@
 #include <functional>
 #include <utility>
 #include "EventEmitter.h"
+#include <unordered_map>
 
 namespace uno
 {
@@ -31,19 +32,19 @@ namespace uno
     template <typename C, typename... Args> \
     struct traits##_helper<void(C::*)(__VA_ARGS__ Args...)> \
     { \
-        using args_tuple = std::tuple<std::decay_t<Args>...>; \
+        using args_tuple = std::tuple<Args...>; \
     }; \
         \
     template <typename C, typename... Args> \
     struct traits##_helper<void(C::*)(__VA_ARGS__ Args...) const> \
     { \
-        using args_tuple = std::tuple<std::decay_t<Args>...>; \
+        using args_tuple = std::tuple<Args...>; \
     }; \
         \
     template <typename... Args> \
     struct traits##_helper<void(*)(__VA_ARGS__ Args...)> \
     { \
-        using args_tuple = std::tuple<std::decay_t<Args>...>; \
+        using args_tuple = std::tuple<Args...>; \
     }; \
         \
     template <typename T, typename = void> \
@@ -59,28 +60,27 @@ namespace uno
 
 #undef FUNCTION_TRAITS
 
-        template<typename Tuple, size_t... Is>
-        static Tuple json_to_tuple_impl(const arg_t& args, std::index_sequence<Is...>)
+        // S2S 调用辅助：直接展开参数包，无中间 tuple 拷贝
+        template<typename Func, typename Tuple, size_t... Is>
+        static void invoke_s2s(Func& func, const arg_t& args, std::index_sequence<Is...>)
         {
-            if (args.size() != sizeof...(Is))
-            {
-                throw std::runtime_error("Arguments count not match " +
-                    std::to_string(args.size()) + " != " +
-                    std::to_string(sizeof...(Is)));
+            if (args.size() != sizeof...(Is)) {
+                throw std::runtime_error("Arguments count mismatch: expected " + 
+                    std::to_string(sizeof...(Is)) + ", got " + std::to_string(args.size()));
             }
 
-            return std::make_tuple(
-                args[Is].get<std::tuple_element_t<Is, Tuple>>()...
-            );
+            func(args[Is].template get<std::decay_t<std::tuple_element_t<Is, Tuple>>>()...);
         }
 
-        template<typename Tuple>
-        static Tuple json_to_tuple(const arg_t& args)
+        // C2S 调用辅助
+        template<typename Func, typename Tuple, size_t... Is>
+        static void invoke_c2s(Func& func, SessionPtr session, const arg_t& args, std::index_sequence<Is...>)
         {
-            return json_to_tuple_impl<Tuple>(
-                args,
-                std::make_index_sequence<std::tuple_size_v<Tuple>>{}
-            );
+            if (args.size() != sizeof...(Is)) {
+                throw std::runtime_error("Arguments count mismatch: expected " + 
+                    std::to_string(sizeof...(Is)) + ", got " + std::to_string(args.size()));
+            }
+            func(std::move(session), args[Is].template get<std::decay_t<std::tuple_element_t<Is, Tuple>>>()...);
         }
 
     public:
@@ -141,9 +141,11 @@ namespace uno
 
             s2s_funcs[funcname] = [func](const arg_t& args)
             {
-                auto args_tuple = json_to_tuple<ArgsTuple>(args);
-
-                std::apply(func, args_tuple);
+                invoke_s2s<Func, ArgsTuple>(
+                    const_cast<Func&>(func), 
+                    args, 
+                    std::make_index_sequence<std::tuple_size_v<ArgsTuple>>{}
+                );
             };
         }
 
@@ -175,9 +177,12 @@ namespace uno
 
             c2s_funcs[funcname] = [func](SessionPtr ss, const arg_t& args)
             {
-                auto args_tuple = json_to_tuple<ArgsTuple>(args);
-                auto full_tuple = std::tuple_cat(std::forward_as_tuple(ss), args_tuple);
-                std::apply(func, full_tuple);
+                invoke_c2s<Func, ArgsTuple>(
+                    const_cast<Func&>(func), 
+                    ss, 
+                    args, 
+                    std::make_index_sequence<std::tuple_size_v<ArgsTuple>>{}
+                );
             };
         }
 
@@ -194,8 +199,8 @@ namespace uno
 
 
     private:
-        std::map<std::string, std::function<void(const arg_t&)>> s2s_funcs;
-        std::map<std::string, std::function<void(SessionPtr, const arg_t&)>> c2s_funcs;
+        std::unordered_map<std::string, std::function<void(const arg_t&)>> s2s_funcs;
+        std::unordered_map<std::string, std::function<void(SessionPtr, const arg_t&)>> c2s_funcs;
 
         Router() = default;
         ~Router() = default;
