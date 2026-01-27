@@ -6,6 +6,8 @@
 #include "errc.h"
 #include <regex>
 #include <utility>
+#include <filesystem>
+
 #include "db.h"
 #include "../game/room.h"
 #include "../game/lobby.h"
@@ -30,7 +32,7 @@ namespace uno
                     cfg.contains_key("port") ? cfg["port"].get<int>() : UNO_SERVER_PORT)),
                 m_wsSvr(m_httpSvr),
                 m_bg(&m_loop_ctx.que, &m_loop_ctx.async),
-                m_db(&m_bg, UNO_DB_PATH),
+                m_db(&m_bg, cfg.contains_key("db_url") ? cfg["db_url"].get<std::string>() : UNO_DB_PATH),
                 m_dbagent(&m_db)
     {
         std::cout << cfg.stringify() << std::endl;

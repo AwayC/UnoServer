@@ -2,5 +2,5 @@
   "port": 8081,
   "ip": "0.0.0.0",
   "secret": "123456",
-  "db_url": "./uno_game.db3"
+  "db_url": "mysqlx://root:123456@localhost:33060/test"
 }

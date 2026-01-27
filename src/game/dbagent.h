@@ -13,7 +13,7 @@ namespace uno {
     class DBagent
     {
     public:
-        DBagent(DataBase* db) : m_db(db)
+        DBagent(IDataBase* db) : m_db(db)
         {
             assert(m_db);
 
@@ -140,7 +140,7 @@ namespace uno {
         ~DBagent() = default;
 
     private:
-        DataBase* m_db;
+        IDataBase* m_db;
     };
 
 };

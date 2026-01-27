@@ -4,11 +4,11 @@
 #include <uv.h>
 #include "core/db.h"
 #include "sqlite3.h"
-#include "SQLiteCpp/SQLiteCpp.h"
+#include "sql/mysql.h"
 
 using namespace uno;
 
-#define DB_PATH "test_db.db3"
+#define DB_PATH "mysqlx://root:123456@localhost:33060/test"
 #define EXCEPT_CB_TRY(err, msg) do { \
         try \
         { \
@@ -25,7 +25,7 @@ using namespace uno;
 ThreadQue<BackCallback> g_que;
 uv_loop_t* g_loop;
 Background* g_bg;
-DataBase* g_db;
+MysqlAgent* g_db;
 uv_async_t g_async;
 uv_timer_t g_timer1;
 uv_timer_t g_timer2;
@@ -111,7 +111,7 @@ void test_db_funcs(uv_timer_t* handle)
                 break;
             }
 
-            g_db->users_create_user("away",
+            g_db->users_create_user("1234",
                             "123456",
                             "away@example.com",
             [](std::exception_ptr err)
@@ -316,7 +316,7 @@ int main()
     g_bg = new Background(&g_que, &g_async);
     g_bg->start();
 
-    g_db = new DataBase(g_bg, DB_PATH);
+    g_db = new MysqlAgent(g_bg, DB_PATH);
 
     return uv_run(g_loop, UV_RUN_DEFAULT);
 }

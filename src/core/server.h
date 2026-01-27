@@ -11,11 +11,12 @@
 #include "WebSocket.h"
 #include "WsServer.h"
 #include "leptjson.h"
+#include "sql/mysql.h"
 #include "game/dbagent.h"
 #include "game/lobby.h"
 #include "game/room.h"
 
-#define UNO_DB_PATH "uno_game.db3"
+#define UNO_DB_PATH "mysqlx://root:123456@localhost:33060/unogame"
 #define UNO_SERVER_PORT 8081
 #define UNO_SERVER_IP "0.0.0.0"
 
@@ -29,7 +30,7 @@ namespace uno
         Server(lept_value& cfg);
 
 
-        const DataBase* get_db() const
+        const IDataBase* get_db() const
         {
             return &m_db;
         }
@@ -50,7 +51,7 @@ namespace uno
             ThreadQue<BackCallback> que;
         } m_loop_ctx;
 
-        DataBase m_db;
+        MysqlAgent m_db;
         DBagent m_dbagent;
         Background m_bg;
         uv_timer_t m_updateTimer;

@@ -27,10 +27,8 @@ else()
     message(WARNING "MySQL Connector/C++ (X DevAPI) not found via Homebrew.")
 endif()
 # ------------------------------------------------------
-
 add_library(UnoServer
         src/core/ssmgr.cpp
-        src/core/db.cpp
         src/core/server.cpp
         src/core/router.cpp
         src/core/background.cpp
@@ -50,6 +48,9 @@ add_library(UnoServer
         src/game/room.cpp
 
         src/util/ssl.h
+
+        src/sql/mysql.cpp
+        src/sql/mysql.h
 )
 
 
@@ -57,10 +58,12 @@ add_library(UnoServer
 target_link_libraries(UnoServer
         websocket
         leptjson
+        ${MYSQL_CONNECTOR_LIBRARY}
 )
 
 target_include_directories(UnoServer PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/
+        ${MYSQL_CONNECTOR_INCLUDE_DIR}
 )
 
 add_executable(main
@@ -115,5 +118,5 @@ target_link_libraries(test_mysql
     ${MYSQL_CONNECTOR_LIBRARY}
 )
 target_include_directories(test_mysql PRIVATE
-        ${MYSQL_CONNECTOR_INCLUDE_DIR}
+    ${MYSQL_CONNECTOR_INCLUDE_DIR}
 )

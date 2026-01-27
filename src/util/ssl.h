@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <iomanip>
 #include <string>
 #include <openssl/evp.h>
 #include <openssl/md5.h>
