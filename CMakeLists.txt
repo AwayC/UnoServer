@@ -7,9 +7,26 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
-add_subdirectory(third-party/sqlite3)
 add_subdirectory(third-party/MyWebSocket)
+
+# --- MySQL Connector/C++ (X DevAPI via Homebrew) Configuration ---
+set(MYSQL_CONNECTOR_DIR "/opt/homebrew/opt/mysql-connector-c++")
+
+find_path(MYSQL_CONNECTOR_INCLUDE_DIR mysqlx/xdevapi.h
+    HINTS ${MYSQL_CONNECTOR_DIR}/include
+)
+
+find_library(MYSQL_CONNECTOR_LIBRARY NAMES mysqlcppconnx
+    HINTS ${MYSQL_CONNECTOR_DIR}/lib
+)
+
+if (MYSQL_CONNECTOR_INCLUDE_DIR AND MYSQL_CONNECTOR_LIBRARY)
+    message(STATUS "Found MySQL Connector/C++ (X DevAPI) Include: ${MYSQL_CONNECTOR_INCLUDE_DIR}")
+    message(STATUS "Found MySQL Connector/C++ (X DevAPI) Library: ${MYSQL_CONNECTOR_LIBRARY}")
+else()
+    message(WARNING "MySQL Connector/C++ (X DevAPI) not found via Homebrew.")
+endif()
+# ------------------------------------------------------
 
 add_library(UnoServer
         src/core/ssmgr.cpp
@@ -38,8 +55,6 @@ add_library(UnoServer
 
 
 target_link_libraries(UnoServer
-        sqlite3
-        SQLiteCpp
         websocket
         leptjson
 )
@@ -56,13 +71,6 @@ target_link_libraries(main
     UnoServer
 )
 
-# test sqlite
-add_executable(test_sqlite test/test_db/test_sqlite.cpp)
-target_link_libraries(test_sqlite
-    sqlite3
-    SQLiteCpp
-)
-
 #test background
 add_executable(test_background test/test_background.cpp)
 target_link_libraries(test_background
@@ -73,8 +81,6 @@ target_link_libraries(test_background
 #test db
 add_executable(test_db test/test_db/test_db.cpp)
 target_link_libraries(test_db
-    sqlite3
-    SQLiteCpp
     UnoServer
     websocket
 )
@@ -101,4 +107,13 @@ target_link_libraries(test_event_emitter
 add_executable(test_api test/test_example/test.cpp)
 target_link_libraries(test_api
     UnoServer
+)
+
+#test mysql
+add_executable(test_mysql test/test_db/test_mysql.cpp)
+target_link_libraries(test_mysql
+    ${MYSQL_CONNECTOR_LIBRARY}
+)
+target_include_directories(test_mysql PRIVATE
+        ${MYSQL_CONNECTOR_INCLUDE_DIR}
 )
