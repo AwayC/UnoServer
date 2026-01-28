@@ -13,7 +13,6 @@
 
 *   **高性能**: 使用现代 C++ 构建，具有低延迟和高并发处理能力。
 *   **WebSocket 支持**: 使用自定义 WebSocket 实现进行实时双向通信。
-*   **持久化存储**: 集成 SQLite 用于用户数据和游戏状态的持久化。
 *   **跨平台**: 通过 clang，gcc 编译测试。
 
 ## 🛠️ 构建与安装
@@ -23,9 +22,11 @@
 *   CMake (3.10 或更高版本)
 *   Git
 *   OpenSSL (依赖)
+*   MySQL (mysql-connector-c++, 最初版本是SQLite)
 
-安装 OpenSSL
+### 安装 OpenSSL
 Linux:
+
 ```bash
 sudo apt-get install libssl-dev
 # 检查安装是否成功
@@ -37,6 +38,25 @@ brew install openssl
 # 检查安装是否成功
 openssl --version
 ```
+
+### 安装MySQL
+
+官网或者 Homebrew
+
+安装 c++ connector (X DevAPI 版本)
+
+```bash
+brew install mysql
+brew install mysql-connector-c++
+```
+
+可能需要配置库的路径，在 CMakeLists.txt 中
+
+```cmake
+set(MYSQL_CONNECTOR_DIR "/opt/homebrew/opt/mysql-connector-c++") # 例如这个路径
+```
+
+
 
 ### 构建步骤
 
@@ -55,13 +75,16 @@ make
 ```
 
 ## 🚀 使用方法
+
+启动 MySQL 服务端
+
 在 config.json 中配置端口，监听ip，jwt-key，数据库路径：
 ```json
 {
   "port": 8081,
   "ip": "127.0.0.1",
   "secret": "123456",
-  "db_url": "./uno_game.db3"
+  "db_url": "mysqlx://usr:password@localhost:33060/uno_db"
 }
 ```
 
@@ -73,12 +96,18 @@ cd ..
 
 服务器将在配置的端口上启动监听（默认为 127.0.0.1:8081，请检查 `config.json`）。
 
+如果连接不上 MySQL 请检查 MySQL 是否开启 `mysqlx` 服务
+
 ## 📂 项目结构
 
 *   `src/core`: 核心服务器组件。
 *   `src/game`: 游戏逻辑。
-*   `third-party`: 第三方库（WebSocket, SQLite 等）。
+*   `third-party`: 第三方库（WebSocket 等）。
 
 ## 📚 API 文档
 
 关于 HTTP 和 WebSocket API 的详细信息，请参阅 [Uno Game API.md](./Uno%20Game%20API.md)。
+
+## ⏱️ 更新
+
+- 数据库从 SQLite 替换成 MySQL
