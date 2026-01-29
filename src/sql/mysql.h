@@ -14,13 +14,12 @@
 
 namespace uno
 {
-    using namespace mysqlx;
     class MysqlAgent : public IDataBase
     {
     public:
         MysqlAgent(Background* bg, const std::string& url) :
             IDataBase(bg),
-            m_client(url, ClientOption::POOL_MAX_SIZE, POOL_SIZE)
+            m_client(url, mysqlx::ClientOption::POOL_MAX_SIZE, POOL_SIZE)
         {
 
         }
@@ -115,7 +114,7 @@ namespace uno
 
     private:
         // 连接池
-        Client m_client;
+        mysqlx::Client m_client;
     };
 }
 

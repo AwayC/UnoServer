@@ -11,6 +11,8 @@
 
 namespace uno
 {
+    using namespace mysqlx;
+
     std::string trim_and_lower(const std::string& str)
     {
         std::string result = str;
